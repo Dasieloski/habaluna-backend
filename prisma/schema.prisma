@@ -3,11 +3,17 @@
 
 generator client {
   provider = "prisma-client-js"
+  // Railway puede usar imágenes con OpenSSL 3 (y/o musl). Incluir binarios explícitos
+  // evita errores tipo: "libssl.so not found" en runtime.
+  binaryTargets = ["native", "debian-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  // Recomendado con Supabase: usar conexión directa para migraciones/DDL
+  // (PgBouncer/pooler puede fallar con migrate).
+  directUrl = env("DIRECT_URL")
 }
 
 enum UserRole {
