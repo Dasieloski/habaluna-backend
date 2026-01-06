@@ -6,6 +6,9 @@ if [ -z "${DATABASE_URL:-}" ]; then
   exit 1
 fi
 
+# Si no se define DIRECT_URL, usar DATABASE_URL como fallback (evita fallo de Prisma por env faltante).
+export DIRECT_URL="${DIRECT_URL:-$DATABASE_URL}"
+
 echo "🔧 Generando Prisma Client..."
 npx prisma generate
 
