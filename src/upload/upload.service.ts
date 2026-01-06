@@ -1,27 +1,64 @@
 import { Injectable } from '@nestjs/common';
-import * as fs from 'fs';
-import * as path from 'path';
+import { v2 as cloudinary } from 'cloudinary';
 
 @Injectable()
 export class UploadService {
-  private readonly uploadDir = './uploads';
-
   constructor() {
-    // Crear directorio de uploads si no existe
-    if (!fs.existsSync(this.uploadDir)) {
-      fs.mkdirSync(this.uploadDir, { recursive: true });
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+      secure: true,
+    });
+  }
+
+  private ensureConfigured() {
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      throw new Error(
+        'Cloudinary no configurado. Define CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET.',
+      );
     }
   }
 
-  getFileUrl(filename: string): string {
-    return `/uploads/${filename}`;
-  }
-
-  deleteFile(filename: string): void {
-    const filePath = path.join(this.uploadDir, filename);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+  async uploadImage(file: Express.Multer.File): Promise<{
+    url: string;
+    publicId: string;
+    bytes: number;
+    width?: number;
+    height?: number;
+    format?: string;
+  }> {
+    this.ensureConfigured();
+    if (!file?.buffer) {
+      throw new Error('Archivo inválido (no buffer).');
     }
+
+    const folder = process.env.CLOUDINARY_FOLDER || 'habanaluna';
+
+    const result = await new Promise<any>((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder,
+          resource_type: 'image',
+          // Mantener formato original; Cloudinary devolverá secure_url.
+        },
+        (error, res) => {
+          if (error) return reject(error);
+          return resolve(res);
+        },
+      );
+
+      stream.end(file.buffer);
+    });
+
+    return {
+      url: result.secure_url,
+      publicId: result.public_id,
+      bytes: result.bytes,
+      width: result.width,
+      height: result.height,
+      format: result.format,
+    };
   }
 }
 
