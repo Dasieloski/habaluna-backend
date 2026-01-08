@@ -10,4 +10,3 @@ import { WishlistService } from './wishlist.service';
   exports: [WishlistService],
 })
 export class WishlistModule {}
-

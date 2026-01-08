@@ -71,4 +71,3 @@ export class CreateProductVariantDto {
   @IsNumber()
   order?: number;
 }
-

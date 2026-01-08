@@ -27,4 +27,3 @@ export class UpdateOrderStatusDto {
   @IsEnum(PaymentStatus)
   paymentStatus?: PaymentStatus;
 }
-

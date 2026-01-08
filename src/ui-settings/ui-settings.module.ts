@@ -7,4 +7,3 @@ import { UiSettingsService } from './ui-settings.service';
   providers: [UiSettingsService],
 })
 export class UiSettingsModule {}
-

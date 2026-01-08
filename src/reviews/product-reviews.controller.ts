@@ -20,4 +20,3 @@ export class ProductReviewsController {
     return this.reviewsService.createPublic(productId, dto);
   }
 }
-

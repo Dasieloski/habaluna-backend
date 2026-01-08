@@ -7,4 +7,3 @@ import { StatsController } from './stats.controller';
   providers: [StatsService],
 })
 export class StatsModule {}
-

@@ -7,4 +7,3 @@ export class AssignProductsToCategoryDto {
   @IsString({ each: true })
   productIds: string[];
 }
-

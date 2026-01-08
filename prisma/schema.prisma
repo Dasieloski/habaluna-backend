@@ -11,9 +11,9 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  // Recomendado con Supabase: usar conexión directa para migraciones/DDL
-  // (PgBouncer/pooler puede fallar con migrate).
-  directUrl = env("DIRECT_URL")
+  // directUrl es opcional: solo necesario si usas pooler (ej: Supabase PgBouncer)
+  // Si no está definido, Prisma usará DATABASE_URL para migraciones
+  // directUrl = env("DIRECT_URL")  // Descomenta solo si necesitas conexión directa
 }
 
 enum UserRole {
@@ -60,6 +60,7 @@ model User {
   orders        Order[]
   cartItems     CartItem[]
   refreshTokens RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
   reviews       Review[]       @relation("UserReviews")
   wishlistItems WishlistItem[]
 
@@ -96,6 +97,21 @@ model RefreshToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([used])
+  @@map("password_reset_tokens")
 }
 
 model Category {

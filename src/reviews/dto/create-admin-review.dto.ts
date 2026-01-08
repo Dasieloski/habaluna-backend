@@ -40,4 +40,3 @@ export class CreateAdminReviewDto {
   @IsBoolean()
   isApproved?: boolean;
 }
-

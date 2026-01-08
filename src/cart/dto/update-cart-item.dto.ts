@@ -9,4 +9,3 @@ export class UpdateCartItemDto {
   @Min(1)
   quantity: number;
 }
-

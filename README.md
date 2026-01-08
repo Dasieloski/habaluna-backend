@@ -75,3 +75,13 @@ src/
 └── prisma/        # Servicio Prisma
 ```
 
+## Seguridad: Rate limiting (Auth)
+
+Los endpoints de autenticación (`POST /api/auth/login` y `POST /api/auth/register`) tienen rate limiting con `@nestjs/throttler`.
+
+Variables de entorno:
+
+- **`THROTTLE_AUTH_LIMIT`**: límite de requests por ventana (por IP). Default: `5` en producción, `20` en desarrollo.
+- **`THROTTLE_AUTH_TTL_SECONDS`**: tamaño de la ventana en segundos. Default: `900` (15 min) en producción, `60` en desarrollo.
+- **`THROTTLE_ERROR_MESSAGE`**: mensaje para error **429**.
+- **`TRUST_PROXY`**: si `true`, habilita `trust proxy` en Express (recomendado detrás de reverse proxy / Railway).

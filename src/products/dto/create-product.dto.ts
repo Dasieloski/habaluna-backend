@@ -116,4 +116,3 @@ export class CreateProductDto {
   @IsUUID()
   categoryId: string;
 }
-

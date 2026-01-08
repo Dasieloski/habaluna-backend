@@ -11,4 +11,3 @@ import { ProductReviewsController } from './product-reviews.controller';
   exports: [ReviewsService],
 })
 export class ReviewsModule {}
-

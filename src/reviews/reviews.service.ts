@@ -21,8 +21,20 @@ export class ReviewsService {
     });
   }
 
-  async createPublic(productId: string, dto: { authorName: string; authorEmail?: string; rating: number; title?: string; content: string }) {
-    const product = await this.prisma.product.findUnique({ where: { id: productId }, select: { id: true } });
+  async createPublic(
+    productId: string,
+    dto: {
+      authorName: string;
+      authorEmail?: string;
+      rating: number;
+      title?: string;
+      content: string;
+    },
+  ) {
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true },
+    });
     if (!product) throw new NotFoundException('Product not found');
 
     const settings = await this.getSettings();
@@ -49,7 +61,9 @@ export class ReviewsService {
     return this.prisma.reviewSettings.update({
       where: { id: current.id },
       data: {
-        ...(dto.autoApproveReviews !== undefined ? { autoApproveReviews: dto.autoApproveReviews } : {}),
+        ...(dto.autoApproveReviews !== undefined
+          ? { autoApproveReviews: dto.autoApproveReviews }
+          : {}),
       },
     });
   }
@@ -100,7 +114,10 @@ export class ReviewsService {
 
   async adminCreate(dto: CreateAdminReviewDto) {
     // validate product exists
-    const product = await this.prisma.product.findUnique({ where: { id: dto.productId }, select: { id: true } });
+    const product = await this.prisma.product.findUnique({
+      where: { id: dto.productId },
+      select: { id: true },
+    });
     if (!product) throw new NotFoundException('Product not found');
 
     return this.prisma.review.create({
@@ -124,7 +141,10 @@ export class ReviewsService {
 
     // If productId changes, validate it
     if ((dto as any).productId) {
-      const product = await this.prisma.product.findUnique({ where: { id: (dto as any).productId }, select: { id: true } });
+      const product = await this.prisma.product.findUnique({
+        where: { id: (dto as any).productId },
+        select: { id: true },
+      });
       if (!product) throw new NotFoundException('Product not found');
     }
 
@@ -143,4 +163,3 @@ export class ReviewsService {
     return this.prisma.review.delete({ where: { id } });
   }
 }
-

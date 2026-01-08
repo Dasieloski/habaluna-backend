@@ -1,13 +1,4 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CartService } from './cart.service';
 import { AddToCartDto } from './dto/add-to-cart.dto';
@@ -55,5 +46,10 @@ export class CartController {
   async clearCart(@CurrentUser() user: any) {
     return this.cartService.clearCart(user.id);
   }
-}
 
+  @Get('validate')
+  @ApiOperation({ summary: 'Validate cart items stock availability' })
+  async validateCart(@CurrentUser() user: any) {
+    return this.cartService.validateCart(user.id);
+  }
+}

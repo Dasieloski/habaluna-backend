@@ -7,4 +7,3 @@ export class UpdateReviewSettingsDto {
   @IsBoolean()
   autoApproveReviews?: boolean;
 }
-

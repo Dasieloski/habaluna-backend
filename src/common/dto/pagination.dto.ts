@@ -23,4 +23,3 @@ export class PaginationDto {
   @Max(100)
   limit?: number = 10;
 }
-

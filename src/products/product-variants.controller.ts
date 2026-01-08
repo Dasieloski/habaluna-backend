@@ -49,10 +49,7 @@ export class ProductVariantsController {
   @Roles('ADMIN')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update product variant (Admin only)' })
-  async update(
-    @Param('id') id: string,
-    @Body() updateProductVariantDto: UpdateProductVariantDto,
-  ) {
+  async update(@Param('id') id: string, @Body() updateProductVariantDto: UpdateProductVariantDto) {
     return this.productVariantsService.update(id, updateProductVariantDto);
   }
 
@@ -65,4 +62,3 @@ export class ProductVariantsController {
     return this.productVariantsService.remove(id);
   }
 }
-

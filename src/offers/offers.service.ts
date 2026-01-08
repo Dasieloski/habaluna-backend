@@ -98,4 +98,3 @@ export class OffersService {
     return this.prisma.offer.delete({ where: { id } });
   }
 }
-

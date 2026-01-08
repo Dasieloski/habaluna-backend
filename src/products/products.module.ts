@@ -10,4 +10,3 @@ import { ProductVariantsController } from './product-variants.controller';
   exports: [ProductsService, ProductVariantsService],
 })
 export class ProductsModule {}
-

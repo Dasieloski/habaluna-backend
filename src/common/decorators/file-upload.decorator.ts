@@ -9,4 +9,3 @@ export function UploadFile(fieldName: string = 'file') {
 export function UploadFiles(fieldName: string = 'files', maxCount: number = 10) {
   return applyDecorators(UseInterceptors(FilesInterceptor(fieldName, maxCount, multerOptions)));
 }
-

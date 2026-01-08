@@ -23,8 +23,7 @@ export class UiSettingsService {
         },
         {
           title: 'DEVOLUCIONES GRATIS',
-          description:
-            'Tienes 30 días para devolver tu producto sin costo adicional.',
+          description: 'Tienes 30 días para devolver tu producto sin costo adicional.',
         },
         {
           title: 'ENTREGA RÁPIDA',
@@ -71,4 +70,3 @@ export class UiSettingsService {
     });
   }
 }
-

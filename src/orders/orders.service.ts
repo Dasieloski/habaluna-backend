@@ -22,12 +22,10 @@ export class OrdersService {
 
     // Validate stock
     for (const item of cart.items) {
-      const stock = item.productVariant 
-        ? item.productVariant.stock 
-        : item.product.stock;
-      
+      const stock = item.productVariant ? item.productVariant.stock : item.product.stock;
+
       if (stock < item.quantity) {
-        const itemName = item.productVariant 
+        const itemName = item.productVariant
           ? `${item.product.name} - ${item.productVariant.name}`
           : item.product.name;
         throw new BadRequestException(`Insufficient stock for ${itemName}`);
@@ -209,9 +207,7 @@ export class OrdersService {
     if (updateDto.paymentIntentId && order.status === 'PENDING') {
       // Validar stock antes de confirmar
       for (const item of order.items) {
-        const stock = item.productVariant
-          ? item.productVariant.stock
-          : item.product.stock;
+        const stock = item.productVariant ? item.productVariant.stock : item.product.stock;
 
         if (stock < item.quantity) {
           const itemName = item.productVariant
@@ -283,4 +279,3 @@ export class OrdersService {
     });
   }
 }
-

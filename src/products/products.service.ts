@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -6,16 +6,18 @@ import { PaginationDto } from '../common/dto/pagination.dto';
 
 @Injectable()
 export class ProductsService {
+  private readonly logger = new Logger(ProductsService.name);
+
   constructor(private prisma: PrismaService) {}
 
   async create(createProductDto: CreateProductDto) {
     try {
-      console.log('📦 Creando producto:', {
+      this.logger.log('Creando producto', 'ProductsService', {
         name: createProductDto.name,
         slug: createProductDto.slug,
         categoryId: createProductDto.categoryId,
-        images: createProductDto.images?.length || 0,
-        allergens: createProductDto.allergens?.length || 0,
+        imagesCount: createProductDto.images?.length || 0,
+        allergensCount: createProductDto.allergens?.length || 0,
         isCombo: (createProductDto as any).isCombo ?? false,
       });
 
@@ -70,15 +72,19 @@ export class ProductsService {
         productData.nutritionalInfo = rest.nutritionalInfo;
       }
 
-      console.log('📦 Datos preparados para Prisma:', {
-        ...productData,
-        description: productData.description?.substring(0, 50) + '...',
+      this.logger.debug('Datos preparados para Prisma', 'ProductsService', {
+        name: productData.name,
+        slug: productData.slug,
+        categoryId: productData.categoryId,
+        stock: productData.stock,
+        isActive: productData.isActive,
+        isCombo: productData.isCombo,
       });
 
       const product = await this.prisma.$transaction(async (tx) => {
         const created = await tx.product.create({
-        data: productData,
-        include: { category: true },
+          data: productData,
+          include: { category: true },
         });
 
         if (productData.isCombo) {
@@ -99,19 +105,37 @@ export class ProductsService {
         return created;
       });
 
-      console.log('✅ Producto creado exitosamente:', product.id);
+      this.logger.log(`Producto creado exitosamente: ${product.id}`, 'ProductsService', {
+        productId: product.id,
+        name: product.name,
+        slug: product.slug,
+      });
       return product;
     } catch (error: any) {
       // Slug duplicado
-      if (error?.code === 'P2002' && Array.isArray(error?.meta?.target) && error.meta.target.includes('slug')) {
+      if (
+        error?.code === 'P2002' &&
+        Array.isArray(error?.meta?.target) &&
+        error.meta.target.includes('slug')
+      ) {
+        this.logger.warn('Intento de crear producto con slug duplicado', 'ProductsService', {
+          slug: createProductDto.slug,
+          code: error.code,
+        });
         throw new ConflictException('El slug ya existe. Por favor usa otro slug.');
       }
-      console.error('❌ Error al crear producto:', {
-        message: error.message,
-        code: error.code,
-        meta: error.meta,
-        cause: error.cause,
-      });
+      this.logger.error(
+        'Error al crear producto',
+        error.stack || String(error),
+        'ProductsService',
+        {
+          message: error.message,
+          code: error.code,
+          meta: error.meta,
+          cause: error.cause,
+          slug: createProductDto.slug,
+        },
+      );
       throw error;
     }
   }
@@ -138,11 +162,86 @@ export class ProductsService {
       where.isCombo = filters.isCombo;
     }
 
+    // Filtro de stock disponible
+    if (filters?.inStock === true) {
+      where.stock = {
+        gt: 0,
+      };
+    }
+
+    // Filtro de rango de precios
+    const priceFilters: any[] = [];
+    if (filters?.minPrice !== undefined || filters?.maxPrice !== undefined) {
+      // Para productos sin variantes
+      const productPriceFilter: any = {};
+      if (filters?.minPrice !== undefined) {
+        productPriceFilter.gte = filters.minPrice;
+      }
+      if (filters?.maxPrice !== undefined) {
+        productPriceFilter.lte = filters.maxPrice;
+      }
+      if (Object.keys(productPriceFilter).length > 0) {
+        priceFilters.push({
+          priceUSD: productPriceFilter,
+        });
+      }
+
+      // Para productos con variantes, necesitamos verificar las variantes
+      // Esto es más complejo y requeriría un subquery
+      // Por ahora, filtramos por precio del producto base
+    }
+
+    // Búsqueda por texto
     if (filters?.search) {
-      where.OR = [
+      const searchConditions = [
         { name: { contains: filters.search, mode: 'insensitive' } },
         { description: { contains: filters.search, mode: 'insensitive' } },
       ];
+
+      if (where.OR) {
+        // Si ya hay condiciones OR (de precio), combinarlas
+        where.AND = [{ OR: where.OR }, { OR: searchConditions }];
+        delete where.OR;
+      } else {
+        where.OR = searchConditions;
+      }
+    }
+
+    // Si hay filtros de precio, agregarlos
+    if (priceFilters.length > 0) {
+      if (where.OR || where.AND) {
+        // Ya hay condiciones complejas, usar AND
+        if (!where.AND) {
+          where.AND = [];
+        }
+        where.AND.push({ OR: priceFilters });
+      } else {
+        where.OR = priceFilters;
+      }
+    }
+
+    // Ordenamiento
+    let orderBy: any = { createdAt: 'desc' }; // Default
+    if (filters?.sortBy) {
+      switch (filters.sortBy) {
+        case 'price-asc':
+          orderBy = { priceUSD: 'asc' };
+          break;
+        case 'price-desc':
+          orderBy = { priceUSD: 'desc' };
+          break;
+        case 'name-asc':
+          orderBy = { name: 'asc' };
+          break;
+        case 'name-desc':
+          orderBy = { name: 'desc' };
+          break;
+        case 'created-desc':
+          orderBy = { createdAt: 'desc' };
+          break;
+        default:
+          orderBy = { createdAt: 'desc' };
+      }
     }
 
     const [data, total] = await Promise.all([
@@ -150,14 +249,14 @@ export class ProductsService {
         where,
         skip,
         take: limit,
-        include: { 
+        include: {
           category: true,
           variants: {
             where: { isActive: true },
             orderBy: { order: 'asc' },
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy,
       }),
       this.prisma.product.count({ where }),
     ]);
@@ -176,7 +275,7 @@ export class ProductsService {
   async findOne(id: string) {
     const product = await this.prisma.product.findUnique({
       where: { id },
-      include: { 
+      include: {
         category: true,
         variants: {
           where: { isActive: true },
@@ -214,7 +313,7 @@ export class ProductsService {
   async findBySlug(slug: string) {
     const product = await this.prisma.product.findUnique({
       where: { slug },
-      include: { 
+      include: {
         category: true,
         variants: {
           where: { isActive: true },
@@ -289,13 +388,19 @@ export class ProductsService {
 
       const isOnSale = (p: any) => {
         const price = p.priceUSD ? Number(p.priceUSD) : 0;
-        const compare = p.comparePriceUSD !== null && p.comparePriceUSD !== undefined ? Number(p.comparePriceUSD) : null;
+        const compare =
+          p.comparePriceUSD !== null && p.comparePriceUSD !== undefined
+            ? Number(p.comparePriceUSD)
+            : null;
         if (compare !== null && compare > price) return true;
         // variantes
         const vars = Array.isArray(p.variants) ? p.variants : [];
         return vars.some((v: any) => {
           const vPrice = v.priceUSD ? Number(v.priceUSD) : 0;
-          const vCompare = v.comparePriceUSD !== null && v.comparePriceUSD !== undefined ? Number(v.comparePriceUSD) : null;
+          const vCompare =
+            v.comparePriceUSD !== null && v.comparePriceUSD !== undefined
+              ? Number(v.comparePriceUSD)
+              : null;
           return vCompare !== null && vCompare > vPrice;
         });
       };
@@ -385,7 +490,11 @@ export class ProductsService {
         return updated;
       });
     } catch (error: any) {
-      if (error?.code === 'P2002' && Array.isArray(error?.meta?.target) && error.meta.target.includes('slug')) {
+      if (
+        error?.code === 'P2002' &&
+        Array.isArray(error?.meta?.target) &&
+        error.meta.target.includes('slug')
+      ) {
         throw new ConflictException('El slug ya existe. Por favor usa otro slug.');
       }
       throw error;
@@ -399,4 +508,3 @@ export class ProductsService {
     });
   }
 }
-

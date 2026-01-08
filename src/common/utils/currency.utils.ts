@@ -12,16 +12,17 @@ export function convertToUSD(price: number, currency: 'USD' | 'MNs'): number {
 
 export function formatCurrency(price: number, currency: 'USD' | 'MNs'): string {
   if (currency === 'MNs') {
-    return new Intl.NumberFormat('es-ES', {
-      style: 'decimal',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    }).format(price) + ' MNs';
+    return (
+      new Intl.NumberFormat('es-ES', {
+        style: 'decimal',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      }).format(price) + ' MNs'
+    );
   }
-  
+
   return new Intl.NumberFormat('es-ES', {
     style: 'currency',
     currency: 'USD',
   }).format(price);
 }
-

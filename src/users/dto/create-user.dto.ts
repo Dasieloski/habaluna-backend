@@ -45,4 +45,3 @@ export class CreateUserDto {
   @IsString()
   country?: string;
 }
-

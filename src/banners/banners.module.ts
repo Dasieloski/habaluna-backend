@@ -7,4 +7,3 @@ import { BannersController } from './banners.controller';
   providers: [BannersService],
 })
 export class BannersModule {}
-

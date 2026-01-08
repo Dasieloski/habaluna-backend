@@ -7,4 +7,3 @@ export class UpdateOrderDto {
   @IsString()
   paymentIntentId?: string;
 }
-

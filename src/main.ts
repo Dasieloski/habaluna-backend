@@ -1,15 +1,24 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import * as dotenv from 'dotenv';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 
 dotenv.config();
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bufferLogs: true,
+  });
+
+  // Usar Winston como logger global
+  app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
+
+  const logger = new Logger('Bootstrap');
 
   // Servir archivos estáticos
   const uploadsPath = join(process.cwd(), 'uploads');
@@ -19,65 +28,69 @@ async function bootstrap() {
 
   // CORS - Configuración flexible para producción
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-  
+
   // Función para normalizar dominio (extraer dominio base sin www)
   const getBaseDomain = (url: string): string => {
     try {
       const urlObj = new URL(url);
-      let hostname = urlObj.hostname.replace(/^www\./, ''); // Remover www
+      const hostname = urlObj.hostname.replace(/^www\./, ''); // Remover www
       return hostname;
     } catch {
-      return url.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
+      return url
+        .replace(/^https?:\/\//, '')
+        .replace(/^www\./, '')
+        .replace(/\/$/, '');
     }
   };
-  
+
   app.enableCors({
     origin: (origin, callback) => {
       // Permitir requests sin origin (mobile apps, Postman, curl, etc.)
       if (!origin) {
-        console.log('✅ CORS: Request sin origin permitido');
+        logger.debug('CORS: Request sin origin permitido', 'CORS');
         return callback(null, true);
       }
-      
+
       // En desarrollo, permitir cualquier origen localhost
       if (process.env.NODE_ENV !== 'production') {
         if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-          console.log(`✅ CORS: Origen localhost permitido: ${origin}`);
+          logger.debug(`CORS: Origen localhost permitido: ${origin}`, 'CORS');
           return callback(null, true);
         }
       }
-      
+
       // Normalizar URLs (sin trailing slash y sin protocolo para comparación)
       const normalizedOrigin = origin.replace(/\/$/, '').toLowerCase();
       const normalizedFrontendUrl = frontendUrl.replace(/\/$/, '').toLowerCase();
-      
+
       // Verificar coincidencia exacta
       if (normalizedOrigin === normalizedFrontendUrl) {
-        console.log(`✅ CORS: Origen permitido (exacto): ${origin}`);
+        logger.debug(`CORS: Origen permitido (exacto): ${origin}`, 'CORS');
         return callback(null, true);
       }
-      
+
       // Verificar si es el mismo dominio (con/sin www)
       const originDomain = getBaseDomain(normalizedOrigin);
       const frontendDomain = getBaseDomain(normalizedFrontendUrl);
-      
+
       if (originDomain === frontendDomain) {
-        console.log(`✅ CORS: Origen permitido (mismo dominio): ${origin} (${originDomain})`);
+        logger.debug(`CORS: Origen permitido (mismo dominio): ${origin} (${originDomain})`, 'CORS');
         return callback(null, true);
       }
-      
+
       // Permitir dominios de Railway (para desarrollo/testing)
       if (normalizedOrigin.includes('.railway.app')) {
-        console.log(`✅ CORS: Origen permitido (Railway): ${origin}`);
+        logger.debug(`CORS: Origen permitido (Railway): ${origin}`, 'CORS');
         return callback(null, true);
       }
-      
+
       // Log para debugging
-      console.log(`⚠️ CORS: Origen bloqueado: ${origin}`);
-      console.log(`   Origen normalizado: ${normalizedOrigin}`);
-      console.log(`   Dominio origen: ${originDomain}`);
-      console.log(`   Frontend esperado: ${normalizedFrontendUrl}`);
-      console.log(`   Dominio frontend: ${frontendDomain}`);
+      logger.warn(`CORS: Origen bloqueado: ${origin}`, 'CORS', {
+        normalizedOrigin,
+        originDomain,
+        normalizedFrontendUrl,
+        frontendDomain,
+      });
       callback(new Error('No permitido por CORS'));
     },
     credentials: true,
@@ -91,14 +104,31 @@ async function bootstrap() {
       'Access-Control-Request-Method',
       'Access-Control-Request-Headers',
     ],
-    exposedHeaders: ['Authorization'],
+    // Importante: permitir que el cliente lea los headers de rate limiting
+    exposedHeaders: [
+      'Authorization',
+      'X-RateLimit-Limit',
+      'X-RateLimit-Remaining',
+      'X-RateLimit-Reset',
+      'Retry-After',
+    ],
     maxAge: 86400, // 24 horas
     preflightContinue: false,
     optionsSuccessStatus: 204,
   });
 
+  // Con proxies (Railway / reverse proxy), Express debe confiar en X-Forwarded-For
+  if (process.env.TRUST_PROXY === 'true' || process.env.NODE_ENV === 'production') {
+    app.set('trust proxy', 1);
+  }
+
   // Global prefix
   app.setGlobalPrefix('api');
+
+  // Global Exception Filter - Debe ir antes de otros middlewares
+  // Usar el contenedor de DI para que el filtro pueda inyectar dependencias
+  const httpExceptionFilter = app.get(HttpExceptionFilter);
+  app.useGlobalFilters(httpExceptionFilter);
 
   // Validation
   app.useGlobalPipes(
@@ -124,8 +154,8 @@ async function bootstrap() {
 
   const port = process.env.PORT || 4000;
   await app.listen(port);
-  console.log(`🚀 Server running on http://localhost:${port}`);
-  console.log(`📚 Swagger docs available at http://localhost:${port}/api/docs`);
+  logger.log(`🚀 Server running on http://localhost:${port}`, 'Bootstrap');
+  logger.log(`📚 Swagger docs available at http://localhost:${port}/api/docs`, 'Bootstrap');
 }
 
 bootstrap();

@@ -14,6 +14,7 @@ import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
+import { SearchProductsDto } from './dto/search-products.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -66,38 +67,24 @@ export class ProductsController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all products' })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiQuery({ name: 'categoryId', required: false })
-  @ApiQuery({ name: 'search', required: false })
-  @ApiQuery({ name: 'isFeatured', required: false })
-  @ApiQuery({ name: 'isCombo', required: false })
-  async findAll(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-    @Query('categoryId') categoryId?: string,
-    @Query('search') search?: string,
-    @Query('isFeatured') isFeatured?: string,
-    @Query('isCombo') isCombo?: string,
-  ) {
+  @ApiOperation({ summary: 'Get all products with advanced filtering and sorting' })
+  async findAll(@Query() searchDto: SearchProductsDto) {
     const pagination: PaginationDto = {
-      page: page ? parseInt(page, 10) : 1,
-      limit: limit ? parseInt(limit, 10) : 10,
+      page: searchDto.page || 1,
+      limit: searchDto.limit || 10,
     };
 
-    const filters: any = {};
-    if (categoryId) filters.categoryId = categoryId;
-    if (search) filters.search = search;
-    if (isFeatured !== undefined && isFeatured !== '') {
-      filters.isFeatured = isFeatured === 'true';
-    }
-    if (isCombo !== undefined && isCombo !== '') {
-      filters.isCombo = isCombo === 'true';
-    }
-    // Solo filtrar por isActive si no se está buscando productos destacados específicamente
-    // o si se quiere mostrar todos los productos activos
-    filters.isActive = true;
+    const filters: any = {
+      isActive: true, // Solo productos activos para usuarios públicos
+    };
+
+    if (searchDto.categoryId) filters.categoryId = searchDto.categoryId;
+    if (searchDto.search) filters.search = searchDto.search;
+    if (searchDto.minPrice !== undefined) filters.minPrice = searchDto.minPrice;
+    if (searchDto.maxPrice !== undefined) filters.maxPrice = searchDto.maxPrice;
+    if (searchDto.inStock !== undefined) filters.inStock = searchDto.inStock;
+    if (searchDto.isFeatured !== undefined) filters.isFeatured = searchDto.isFeatured;
+    if (searchDto.sortBy) filters.sortBy = searchDto.sortBy;
 
     return this.productsService.findAll(pagination, filters);
   }
@@ -149,4 +136,3 @@ export class ProductsController {
     return this.productsService.remove(id);
   }
 }
-

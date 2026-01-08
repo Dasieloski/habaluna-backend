@@ -20,7 +20,10 @@ export class WishlistService {
   }
 
   async addToWishlist(userId: string, productId: string) {
-    const product = await this.prisma.product.findUnique({ where: { id: productId }, select: { id: true } });
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true },
+    });
     if (!product) throw new NotFoundException('Product not found');
 
     const existing = await this.prisma.wishlistItem.findFirst({
@@ -48,4 +51,3 @@ export class WishlistService {
     return { success: true };
   }
 }
-

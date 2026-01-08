@@ -34,4 +34,3 @@ export class ListAdminReviewsDto {
   @IsBoolean()
   isApproved?: boolean;
 }
-

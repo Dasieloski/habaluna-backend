@@ -43,4 +43,3 @@ export class CreateBannerDto {
   @IsDateString()
   endDate?: string;
 }
-

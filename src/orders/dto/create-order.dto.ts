@@ -37,4 +37,3 @@ export class CreateOrderDto {
   @IsString()
   notes?: string;
 }
-

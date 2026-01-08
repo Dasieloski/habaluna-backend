@@ -6,43 +6,37 @@ export class StatsService {
   constructor(private prisma: PrismaService) {}
 
   async getDashboardStats() {
-    const [
-      totalUsers,
-      totalProducts,
-      totalOrders,
-      totalRevenue,
-      recentOrders,
-      lowStockProducts,
-    ] = await Promise.all([
-      this.prisma.user.count(),
-      this.prisma.product.count(),
-      this.prisma.order.count(),
-      this.prisma.order.aggregate({
-        _sum: { total: true },
-        where: { paymentStatus: 'PAID' },
-      }),
-      this.prisma.order.findMany({
-        take: 10,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          user: {
-            select: {
-              email: true,
-              firstName: true,
-              lastName: true,
+    const [totalUsers, totalProducts, totalOrders, totalRevenue, recentOrders, lowStockProducts] =
+      await Promise.all([
+        this.prisma.user.count(),
+        this.prisma.product.count(),
+        this.prisma.order.count(),
+        this.prisma.order.aggregate({
+          _sum: { total: true },
+          where: { paymentStatus: 'PAID' },
+        }),
+        this.prisma.order.findMany({
+          take: 10,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            user: {
+              select: {
+                email: true,
+                firstName: true,
+                lastName: true,
+              },
             },
           },
-        },
-      }),
-      this.prisma.product.findMany({
-        where: {
-          stock: { lte: 10 },
-          isActive: true,
-        },
-        take: 10,
-        orderBy: { stock: 'asc' },
-      }),
-    ]);
+        }),
+        this.prisma.product.findMany({
+          where: {
+            stock: { lte: 10 },
+            isActive: true,
+          },
+          take: 10,
+          orderBy: { stock: 'asc' },
+        }),
+      ]);
 
     // Sales by month (last 6 months)
     const sixMonthsAgo = new Date();
@@ -73,4 +67,3 @@ export class StatsService {
     };
   }
 }
-

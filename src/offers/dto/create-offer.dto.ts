@@ -62,4 +62,3 @@ export class CreateOfferDto {
   @IsBoolean()
   isActive?: boolean;
 }
-

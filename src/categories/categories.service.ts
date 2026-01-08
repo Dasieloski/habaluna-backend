@@ -120,7 +120,9 @@ export class CategoriesService {
     }
 
     if (mode !== 'delete_with_products' && mode !== 'move_products_to_uncategorized') {
-      throw new BadRequestException('Modo inválido. Use delete_with_products o move_products_to_uncategorized.');
+      throw new BadRequestException(
+        'Modo inválido. Use delete_with_products o move_products_to_uncategorized.',
+      );
     }
 
     if (mode === 'delete_with_products') {
@@ -200,4 +202,3 @@ export class CategoriesService {
     });
   }
 }
-

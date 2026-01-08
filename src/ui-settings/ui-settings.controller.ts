@@ -35,4 +35,3 @@ export class UiSettingsController {
     return this.ui.updateAdmin(dto);
   }
 }
-

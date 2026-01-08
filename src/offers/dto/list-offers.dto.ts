@@ -8,4 +8,3 @@ export class ListOffersDto extends PaginationDto {
   @IsString()
   search?: string;
 }
-
