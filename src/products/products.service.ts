@@ -249,14 +249,77 @@ export class ProductsService {
         where,
         skip,
         take: limit,
-        include: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          description: true,
+          shortDescription: true,
+          priceUSD: true,
+          priceMNs: true,
+          comparePriceUSD: true,
+          comparePriceMNs: true,
+          sku: true,
+          stock: true,
+          isActive: true,
+          isFeatured: true,
+          isCombo: true,
+          images: true,
+          allergens: true,
+          nutritionalInfo: true,
+          weight: true,
+          categoryId: true,
+          createdAt: true,
+          updatedAt: true,
           category: true,
           variants: {
             where: { isActive: true },
             orderBy: { order: 'asc' },
           },
+          // Campos opcionales (pueden no existir si la migración no se ha aplicado)
+          averageRating: true,
+          reviewCount: true,
         },
         orderBy,
+      }).catch(async (error) => {
+        // Si falla por campos que no existen, intentar sin ellos
+        if (error.message?.includes('does not exist') || error.message?.includes('no existe')) {
+          return this.prisma.product.findMany({
+            where,
+            skip,
+            take: limit,
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              description: true,
+              shortDescription: true,
+              priceUSD: true,
+              priceMNs: true,
+              comparePriceUSD: true,
+              comparePriceMNs: true,
+              sku: true,
+              stock: true,
+              isActive: true,
+              isFeatured: true,
+              isCombo: true,
+              images: true,
+              allergens: true,
+              nutritionalInfo: true,
+              weight: true,
+              categoryId: true,
+              createdAt: true,
+              updatedAt: true,
+              category: true,
+              variants: {
+                where: { isActive: true },
+                orderBy: { order: 'asc' },
+              },
+            },
+            orderBy,
+          });
+        }
+        throw error;
       }),
       this.prisma.product.count({ where }),
     ]);
@@ -273,79 +336,197 @@ export class ProductsService {
   }
 
   async findOne(id: string) {
-    const product = await this.prisma.product.findUnique({
-      where: { id },
-      include: {
-        category: true,
-        variants: {
-          where: { isActive: true },
-          orderBy: { order: 'asc' },
-        },
-        comboItems: {
-          include: {
-            product: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
-                images: true,
-                priceUSD: true,
-                priceMNs: true,
-                comparePriceUSD: true,
-                comparePriceMNs: true,
-                isActive: true,
-                isCombo: true,
+    try {
+      const product = await this.prisma.product.findUnique({
+        where: { id },
+        include: {
+          category: true,
+          variants: {
+            where: { isActive: true },
+            orderBy: { order: 'asc' },
+          },
+          comboItems: {
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                  images: true,
+                  priceUSD: true,
+                  priceMNs: true,
+                  comparePriceUSD: true,
+                  comparePriceMNs: true,
+                  isActive: true,
+                  isCombo: true,
+                },
               },
             },
+            orderBy: { createdAt: 'asc' },
           },
-          orderBy: { createdAt: 'asc' },
         },
-      },
-    });
+      });
 
-    if (!product) {
-      throw new NotFoundException('Product not found');
+      if (!product) {
+        throw new NotFoundException('Product not found');
+      }
+
+      return product;
+    } catch (error: any) {
+      // Si falla por campos que no existen (migración no aplicada), intentar sin ellos
+      if (error.message?.includes('does not exist') || error.message?.includes('no existe') || error.message?.includes('column')) {
+        const product = await this.prisma.$queryRaw`
+          SELECT 
+            id, name, slug, description, "shortDescription",
+            "priceUSD", "priceMNs", "comparePriceUSD", "comparePriceMNs",
+            sku, stock, "isActive", "isFeatured", "isCombo",
+            images, allergens, "nutritionalInfo", weight, "categoryId",
+            "createdAt", "updatedAt"
+          FROM products
+          WHERE id = ${id}
+        ` as any[];
+
+        if (!product || product.length === 0) {
+          throw new NotFoundException('Product not found');
+        }
+
+        // Obtener relaciones por separado
+        const [category, variants, comboItems] = await Promise.all([
+          this.prisma.category.findUnique({ where: { id: product[0].categoryId } }),
+          this.prisma.productVariant.findMany({
+            where: { productId: id, isActive: true },
+            orderBy: { order: 'asc' },
+          }),
+          this.prisma.comboItem.findMany({
+            where: { comboId: id },
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                  images: true,
+                  priceUSD: true,
+                  priceMNs: true,
+                  comparePriceUSD: true,
+                  comparePriceMNs: true,
+                  isActive: true,
+                  isCombo: true,
+                },
+              },
+            },
+            orderBy: { createdAt: 'asc' },
+          }),
+        ]);
+
+        return {
+          ...product[0],
+          category,
+          variants,
+          comboItems,
+          averageRating: null,
+          reviewCount: 0,
+        };
+      }
+      throw error;
     }
-
-    return product;
   }
 
   async findBySlug(slug: string) {
-    const product = await this.prisma.product.findUnique({
-      where: { slug },
-      include: {
-        category: true,
-        variants: {
-          where: { isActive: true },
-          orderBy: { order: 'asc' },
-        },
-        comboItems: {
-          include: {
-            product: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
-                images: true,
-                priceUSD: true,
-                priceMNs: true,
-                comparePriceUSD: true,
-                comparePriceMNs: true,
-                isActive: true,
-                isCombo: true,
+    try {
+      const product = await this.prisma.product.findUnique({
+        where: { slug },
+        include: {
+          category: true,
+          variants: {
+            where: { isActive: true },
+            orderBy: { order: 'asc' },
+          },
+          comboItems: {
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                  images: true,
+                  priceUSD: true,
+                  priceMNs: true,
+                  comparePriceUSD: true,
+                  comparePriceMNs: true,
+                  isActive: true,
+                  isCombo: true,
+                },
               },
             },
+            orderBy: { createdAt: 'asc' },
           },
-          orderBy: { createdAt: 'asc' },
         },
-      },
-    });
+      });
 
-    if (!product) {
-      throw new NotFoundException('Product not found');
+      if (!product) {
+        throw new NotFoundException('Product not found');
+      }
+
+      return product;
+    } catch (error: any) {
+      // Si falla por campos que no existen (migración no aplicada), intentar sin ellos
+      if (error.message?.includes('does not exist') || error.message?.includes('no existe') || error.message?.includes('column')) {
+        const product = await this.prisma.$queryRaw`
+          SELECT 
+            id, name, slug, description, "shortDescription",
+            "priceUSD", "priceMNs", "comparePriceUSD", "comparePriceMNs",
+            sku, stock, "isActive", "isFeatured", "isCombo",
+            images, allergens, "nutritionalInfo", weight, "categoryId",
+            "createdAt", "updatedAt"
+          FROM products
+          WHERE slug = ${slug}
+        ` as any[];
+
+        if (!product || product.length === 0) {
+          throw new NotFoundException('Product not found');
+        }
+
+        // Obtener relaciones por separado
+        const [category, variants, comboItems] = await Promise.all([
+          this.prisma.category.findUnique({ where: { id: product[0].categoryId } }),
+          this.prisma.productVariant.findMany({
+            where: { productId: product[0].id, isActive: true },
+            orderBy: { order: 'asc' },
+          }),
+          this.prisma.comboItem.findMany({
+            where: { comboId: product[0].id },
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                  images: true,
+                  priceUSD: true,
+                  priceMNs: true,
+                  comparePriceUSD: true,
+                  comparePriceMNs: true,
+                  isActive: true,
+                  isCombo: true,
+                },
+              },
+            },
+            orderBy: { createdAt: 'asc' },
+          }),
+        ]);
+
+        return {
+          ...product[0],
+          category,
+          variants,
+          comboItems,
+          averageRating: null,
+          reviewCount: 0,
+        };
+      }
+      throw error;
     }
-
-    return product;
   }
 
   async getBestSellers(limit = 8) {
@@ -375,7 +556,28 @@ export class ProductsService {
     if (ids.length === 0) {
       const candidates = await this.prisma.product.findMany({
         where: { isActive: true },
-        include: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          description: true,
+          shortDescription: true,
+          priceUSD: true,
+          priceMNs: true,
+          comparePriceUSD: true,
+          comparePriceMNs: true,
+          sku: true,
+          stock: true,
+          isActive: true,
+          isFeatured: true,
+          isCombo: true,
+          images: true,
+          allergens: true,
+          nutritionalInfo: true,
+          weight: true,
+          categoryId: true,
+          createdAt: true,
+          updatedAt: true,
           category: true,
           variants: {
             where: { isActive: true },
@@ -384,6 +586,44 @@ export class ProductsService {
         },
         orderBy: { createdAt: 'desc' },
         take: Math.max(50, take * 5), // buscar suficientes para filtrar
+      }).catch(async (error) => {
+        // Si falla por campos que no existen, intentar sin ellos
+        if (error.message?.includes('does not exist') || error.message?.includes('no existe') || error.message?.includes('column')) {
+          return this.prisma.product.findMany({
+            where: { isActive: true },
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              description: true,
+              shortDescription: true,
+              priceUSD: true,
+              priceMNs: true,
+              comparePriceUSD: true,
+              comparePriceMNs: true,
+              sku: true,
+              stock: true,
+              isActive: true,
+              isFeatured: true,
+              isCombo: true,
+              images: true,
+              allergens: true,
+              nutritionalInfo: true,
+              weight: true,
+              categoryId: true,
+              createdAt: true,
+              updatedAt: true,
+              category: true,
+              variants: {
+                where: { isActive: true },
+                orderBy: { order: 'asc' },
+              },
+            },
+            orderBy: { createdAt: 'desc' },
+            take: Math.max(50, take * 5),
+          });
+        }
+        throw error;
       });
 
       const isOnSale = (p: any) => {
@@ -413,13 +653,73 @@ export class ProductsService {
         id: { in: ids },
         isActive: true,
       },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        shortDescription: true,
+        priceUSD: true,
+        priceMNs: true,
+        comparePriceUSD: true,
+        comparePriceMNs: true,
+        sku: true,
+        stock: true,
+        isActive: true,
+        isFeatured: true,
+        isCombo: true,
+        images: true,
+        allergens: true,
+        nutritionalInfo: true,
+        weight: true,
+        categoryId: true,
+        createdAt: true,
+        updatedAt: true,
         category: true,
         variants: {
           where: { isActive: true },
           orderBy: { order: 'asc' },
         },
       },
+    }).catch(async (error) => {
+      // Si falla por campos que no existen, intentar sin ellos
+      if (error.message?.includes('does not exist') || error.message?.includes('no existe') || error.message?.includes('column')) {
+        return this.prisma.product.findMany({
+          where: {
+            id: { in: ids },
+            isActive: true,
+          },
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            description: true,
+            shortDescription: true,
+            priceUSD: true,
+            priceMNs: true,
+            comparePriceUSD: true,
+            comparePriceMNs: true,
+            sku: true,
+            stock: true,
+            isActive: true,
+            isFeatured: true,
+            isCombo: true,
+            images: true,
+            allergens: true,
+            nutritionalInfo: true,
+            weight: true,
+            categoryId: true,
+            createdAt: true,
+            updatedAt: true,
+            category: true,
+            variants: {
+              where: { isActive: true },
+              orderBy: { order: 'asc' },
+            },
+          },
+        });
+      }
+      throw error;
     });
 
     const byId = new Map(products.map((p) => [p.id, p]));
