@@ -1,5 +1,6 @@
-import { IsString, MinLength, Matches } from 'class-validator';
+import { IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsStrongPassword } from '../../common/validators/is-strong-password.validator';
 
 export class ResetPasswordDto {
   @ApiProperty({ description: 'Token recibido por email' })
@@ -7,13 +8,21 @@ export class ResetPasswordDto {
   token: string;
 
   @ApiProperty({
-    description: 'Nueva contraseña (mínimo 8 caracteres, al menos 1 letra y 1 número)',
-    example: 'Password123',
+    description: 'Nueva contraseña con requisitos de seguridad: mínimo 8 caracteres, 1 mayúscula, 1 minúscula, 1 número, 1 símbolo',
+    example: 'Password123!',
   })
   @IsString()
-  @MinLength(8)
-  @Matches(/^(?=.*[A-Za-z])(?=.*\d).{8,}$/, {
-    message: 'La contraseña debe tener mínimo 8 caracteres e incluir al menos 1 letra y 1 número.',
-  })
+  @IsStrongPassword(
+    {
+      minLength: 8,
+      requireUppercase: true,
+      requireLowercase: true,
+      requireNumbers: true,
+      requireSymbols: true,
+    },
+    {
+      message: 'La contraseña debe tener mínimo 8 caracteres e incluir al menos una mayúscula, una minúscula, un número y un símbolo',
+    },
+  )
   newPassword: string;
 }

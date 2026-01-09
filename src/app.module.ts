@@ -17,6 +17,7 @@ import { WishlistModule } from './wishlist/wishlist.module';
 import { UiSettingsModule } from './ui-settings/ui-settings.module';
 import { LoggerModule } from './common/logger/logger.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
     ReviewsModule,
     WishlistModule,
     UiSettingsModule,
+    HealthModule,
   ],
   providers: [HttpExceptionFilter],
 })
