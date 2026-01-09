@@ -31,7 +31,15 @@ export class SearchController {
   @ApiQuery({ name: 'term', required: true, description: 'Partial search term' })
   @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Number of suggestions (default: 5)' })
   async getSuggestions(@Query('term') term: string, @Query('limit') limit?: string) {
-    const limitNum = limit ? parseInt(limit, 10) : 5;
-    return this.searchService.getSearchSuggestions(term, limitNum);
+    try {
+      if (!term || term.trim().length < 2) {
+        return [];
+      }
+      const limitNum = limit ? parseInt(limit, 10) : 5;
+      return await this.searchService.getSearchSuggestions(term, limitNum);
+    } catch (error) {
+      // Devolver array vacío en caso de error para no interrumpir la búsqueda
+      return [];
+    }
   }
 }

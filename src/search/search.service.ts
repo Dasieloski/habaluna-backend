@@ -69,31 +69,39 @@ export class SearchService {
   /**
    * Obtener sugerencias de búsqueda basadas en historial
    */
-  async getSearchSuggestions(partialTerm: string, limit: number = 5) {
-    if (!partialTerm || partialTerm.length < 2) {
+  async getSearchSuggestions(partialTerm: string, limit: number = 5): Promise<string[]> {
+    try {
+      if (!partialTerm || partialTerm.length < 2) {
+        return [];
+      }
+
+      const term = partialTerm.trim().toLowerCase();
+
+      // Buscar términos que empiecen con el término parcial
+      const suggestions = await this.prisma.searchHistory.findMany({
+        where: {
+          searchTerm: {
+            startsWith: term,
+          },
+        },
+        select: {
+          searchTerm: true,
+        },
+        distinct: ['searchTerm'],
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: limit,
+      });
+
+      return suggestions.map((s) => s.searchTerm);
+    } catch (error) {
+      // Si hay un error (por ejemplo, la tabla no existe), devolver array vacío
+      this.logger.warn(
+        `Error obteniendo sugerencias de búsqueda: ${error instanceof Error ? error.message : String(error)}`,
+      );
       return [];
     }
-
-    const term = partialTerm.trim().toLowerCase();
-
-    // Buscar términos que empiecen con el término parcial
-    const suggestions = await this.prisma.searchHistory.findMany({
-      where: {
-        searchTerm: {
-          startsWith: term,
-        },
-      },
-      select: {
-        searchTerm: true,
-      },
-      distinct: ['searchTerm'],
-      orderBy: {
-        createdAt: 'desc',
-      },
-      take: limit,
-    });
-
-    return suggestions.map((s) => s.searchTerm);
   }
 
   /**
