@@ -8,8 +8,11 @@ import {
   Delete,
   Query,
   UseGuards,
+  UseInterceptors,
+  Request,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -19,7 +22,6 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { SearchService } from '../search/search.service';
-import { Request } from 'express';
 
 @ApiTags('products')
 @Controller('products')
@@ -75,7 +77,7 @@ export class ProductsController {
   @UseInterceptors(CacheInterceptor)
   @CacheTTL(300) // Cache por 5 minutos
   @ApiOperation({ summary: 'Get all products with advanced filtering and sorting' })
-  async findAll(@Query() searchDto: SearchProductsDto, @Request() req?: Request) {
+  async findAll(@Query() searchDto: SearchProductsDto, @Request() req?: any) {
     const pagination: PaginationDto = {
       page: searchDto.page || 1,
       limit: searchDto.limit || 10,
@@ -98,11 +100,7 @@ export class ProductsController {
     // Guardar búsqueda en historial si hay término de búsqueda
     if (searchDto.search && searchDto.search.trim().length >= 2) {
       const userId = (req as any)?.user?.id;
-      this.searchService.saveSearch(
-        searchDto.search,
-        result.meta?.total || 0,
-        userId,
-      ).catch(() => {
+      this.searchService.saveSearch(searchDto.search, result.meta?.total || 0, userId).catch(() => {
         // Ignorar errores al guardar historial
       });
     }
@@ -125,7 +123,12 @@ export class ProductsController {
   @Roles('ADMIN')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get products with low stock (Admin only)' })
-  @ApiQuery({ name: 'threshold', required: false, type: Number, description: 'Stock threshold (default: 10)' })
+  @ApiQuery({
+    name: 'threshold',
+    required: false,
+    type: Number,
+    description: 'Stock threshold (default: 10)',
+  })
   async getLowStockProducts(@Query('threshold') threshold?: string) {
     const thresholdNum = threshold ? parseInt(threshold, 10) : 10;
     return this.productsService.getLowStockProducts(thresholdNum);
@@ -133,7 +136,12 @@ export class ProductsController {
 
   @Get(':id/related')
   @ApiOperation({ summary: 'Get related products' })
-  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Number of related products (default: 4)' })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Number of related products (default: 4)',
+  })
   async getRelatedProducts(@Param('id') id: string, @Query('limit') limit?: string) {
     const limitNum = limit ? parseInt(limit, 10) : 4;
     return this.productsService.getRelatedProducts(id, limitNum);
