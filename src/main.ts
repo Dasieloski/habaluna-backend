@@ -8,7 +8,6 @@ import { join } from 'path';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import helmet from 'helmet';
-import { ThrottlerGuard } from '@nestjs/throttler';
 import * as cookieParser from 'cookie-parser';
 
 dotenv.config();
@@ -23,7 +22,131 @@ async function bootstrap() {
 
   const logger = new Logger('Bootstrap');
 
-  // Helmet - Headers de seguridad HTTP
+  // CORS DEBE IR PRIMERO - Antes de cualquier otro middleware
+  // CORS - Configuración flexible para producción
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const allowedOriginsEnv = process.env.ALLOWED_ORIGINS || '';
+
+  // Función para normalizar dominio (extraer dominio base sin www)
+  const getBaseDomain = (url: string): string => {
+    try {
+      const urlObj = new URL(url);
+      const hostname = urlObj.hostname.replace(/^www\./, ''); // Remover www
+      return hostname;
+    } catch {
+      return url
+        .replace(/^https?:\/\//, '')
+        .replace(/^www\./, '')
+        .replace(/\/$/, '');
+    }
+  };
+
+  // Construir lista de orígenes permitidos
+  const allowedOriginsList: string[] = [];
+  if (frontendUrl) {
+    allowedOriginsList.push(frontendUrl);
+  }
+  if (allowedOriginsEnv) {
+    allowedOriginsList.push(...allowedOriginsEnv.split(',').map((o) => o.trim()));
+  }
+
+  logger.log(
+    `CORS configurado. Orígenes permitidos: ${JSON.stringify(allowedOriginsList)}`,
+    'Bootstrap',
+  );
+  logger.log(`CORS - NODE_ENV: ${process.env.NODE_ENV}, FRONTEND_URL: ${frontendUrl}`, 'Bootstrap');
+
+  app.enableCors({
+    origin: (origin, callback) => {
+      // Log para debugging
+      logger.debug(`CORS: Request recibido, origin: ${origin || 'null'}`, 'CORS');
+
+      // Permitir requests sin origin (mobile apps, Postman, curl, etc.)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      const normalizedOrigin = origin.replace(/\/$/, '').toLowerCase();
+
+      // En desarrollo, permitir cualquier origen localhost
+      if (process.env.NODE_ENV !== 'production') {
+        if (normalizedOrigin.includes('localhost') || normalizedOrigin.includes('127.0.0.1')) {
+          return callback(null, true);
+        }
+      }
+
+      // Verificar coincidencia exacta con orígenes permitidos
+      const normalizedAllowed = allowedOriginsList.map((o) => o.replace(/\/$/, '').toLowerCase());
+      if (normalizedAllowed.includes(normalizedOrigin)) {
+        return callback(null, true);
+      }
+
+      // Verificar si es el mismo dominio base (con/sin www)
+      const originDomain = getBaseDomain(normalizedOrigin);
+      for (const allowedOrigin of normalizedAllowed) {
+        const allowedDomain = getBaseDomain(allowedOrigin);
+        if (originDomain === allowedDomain) {
+          return callback(null, true);
+        }
+      }
+
+      // Permitir dominios de Railway (para desarrollo/testing)
+      if (normalizedOrigin.includes('.railway.app')) {
+        return callback(null, true);
+      }
+
+      // Permitir dominios de Vercel (para frontend en producción)
+      // Verificar múltiples variantes para asegurar que funcione
+      if (
+        normalizedOrigin.includes('.vercel.app') ||
+        normalizedOrigin.includes('vercel.app') ||
+        normalizedOrigin.endsWith('vercel.app')
+      ) {
+        logger.log(`CORS: Origen Vercel permitido: ${origin}`, 'CORS');
+        return callback(null, true);
+      }
+
+      // TEMPORAL: En producción, permitir cualquier origen que contenga 'vercel' para debugging
+      // TODO: Remover después de verificar que funciona
+      if (process.env.NODE_ENV === 'production' && normalizedOrigin.includes('vercel')) {
+        logger.warn(`CORS: Origen Vercel permitido (modo debug): ${origin}`, 'CORS');
+        return callback(null, true);
+      }
+
+      // Log para debugging
+      logger.warn(`CORS: Origen bloqueado: ${origin}`, 'CORS');
+      logger.warn(
+        `CORS Debug: normalizedOrigin=${normalizedOrigin}, allowedOrigins=${JSON.stringify(normalizedAllowed)}, NODE_ENV=${process.env.NODE_ENV}`,
+        'CORS',
+      );
+      callback(new Error('No permitido por CORS'));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'Accept',
+      'Origin',
+      'Access-Control-Request-Method',
+      'Access-Control-Request-Headers',
+      'X-CSRF-Token',
+    ],
+    // Importante: permitir que el cliente lea los headers de rate limiting
+    exposedHeaders: [
+      'Authorization',
+      'X-RateLimit-Limit',
+      'X-RateLimit-Remaining',
+      'X-RateLimit-Reset',
+      'Retry-After',
+    ],
+    maxAge: 86400, // 24 horas
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+  });
+
+  // Helmet - Headers de seguridad HTTP (después de CORS)
   app.use(
     helmet({
       contentSecurityPolicy: {
@@ -53,114 +176,6 @@ async function bootstrap() {
   const uploadsPath = join(process.cwd(), 'uploads');
   app.useStaticAssets(uploadsPath, {
     prefix: '/uploads',
-  });
-
-  // CORS - Configuración flexible para producción
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-
-  // Función para normalizar dominio (extraer dominio base sin www)
-  const getBaseDomain = (url: string): string => {
-    try {
-      const urlObj = new URL(url);
-      const hostname = urlObj.hostname.replace(/^www\./, ''); // Remover www
-      return hostname;
-    } catch {
-      return url
-        .replace(/^https?:\/\//, '')
-        .replace(/^www\./, '')
-        .replace(/\/$/, '');
-    }
-  };
-
-  app.enableCors({
-    origin: (origin, callback) => {
-      // Permitir requests sin origin (mobile apps, Postman, curl, etc.)
-      if (!origin) {
-        logger.debug('CORS: Request sin origin permitido', 'CORS');
-        return callback(null, true);
-      }
-
-      // En desarrollo, permitir cualquier origen localhost
-      if (process.env.NODE_ENV !== 'production') {
-        if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-          logger.debug(`CORS: Origen localhost permitido: ${origin}`, 'CORS');
-          return callback(null, true);
-        }
-      }
-
-      // Normalizar URLs (sin trailing slash y sin protocolo para comparación)
-      const normalizedOrigin = origin.replace(/\/$/, '').toLowerCase();
-      const normalizedFrontendUrl = frontendUrl.replace(/\/$/, '').toLowerCase();
-
-      // Verificar coincidencia exacta
-      if (normalizedOrigin === normalizedFrontendUrl) {
-        logger.debug(`CORS: Origen permitido (exacto): ${origin}`, 'CORS');
-        return callback(null, true);
-      }
-
-      // Verificar si es el mismo dominio (con/sin www)
-      const originDomain = getBaseDomain(normalizedOrigin);
-      const frontendDomain = getBaseDomain(normalizedFrontendUrl);
-
-      if (originDomain === frontendDomain) {
-        logger.debug(`CORS: Origen permitido (mismo dominio): ${origin} (${originDomain})`, 'CORS');
-        return callback(null, true);
-      }
-
-      // Permitir dominios de Railway (para desarrollo/testing)
-      if (normalizedOrigin.includes('.railway.app')) {
-        logger.debug(`CORS: Origen permitido (Railway): ${origin}`, 'CORS');
-        return callback(null, true);
-      }
-
-      // Permitir dominios de Vercel (para frontend en producción)
-      if (normalizedOrigin.includes('.vercel.app') || normalizedOrigin.includes('vercel.app')) {
-        logger.debug(`CORS: Origen permitido (Vercel): ${origin}`, 'CORS');
-        return callback(null, true);
-      }
-
-      // Permitir múltiples orígenes desde variable de entorno (separados por coma)
-      const allowedOrigins = process.env.ALLOWED_ORIGINS;
-      if (allowedOrigins) {
-        const originsList = allowedOrigins.split(',').map((o) => o.trim().toLowerCase().replace(/\/$/, ''));
-        if (originsList.includes(normalizedOrigin)) {
-          logger.debug(`CORS: Origen permitido (ALLOWED_ORIGINS): ${origin}`, 'CORS');
-          return callback(null, true);
-        }
-      }
-
-      // Log para debugging
-      logger.warn(`CORS: Origen bloqueado: ${origin}`, 'CORS', {
-        normalizedOrigin,
-        originDomain,
-        normalizedFrontendUrl,
-        frontendDomain,
-        allowedOrigins: process.env.ALLOWED_ORIGINS,
-      });
-      callback(new Error('No permitido por CORS'));
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
-    allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-      'X-Requested-With',
-      'Accept',
-      'Origin',
-      'Access-Control-Request-Method',
-      'Access-Control-Request-Headers',
-    ],
-    // Importante: permitir que el cliente lea los headers de rate limiting
-    exposedHeaders: [
-      'Authorization',
-      'X-RateLimit-Limit',
-      'X-RateLimit-Remaining',
-      'X-RateLimit-Reset',
-      'Retry-After',
-    ],
-    maxAge: 86400, // 24 horas
-    preflightContinue: false,
-    optionsSuccessStatus: 204,
   });
 
   // Con proxies (Railway / reverse proxy), Express debe confiar en X-Forwarded-For
