@@ -32,7 +32,12 @@ async function bootstrap() {
           styleSrc: ["'self'", "'unsafe-inline'"],
           scriptSrc: ["'self'"],
           imgSrc: ["'self'", 'data:', 'https:', 'http:'],
-          connectSrc: ["'self'"],
+          connectSrc: [
+            "'self'",
+            process.env.FRONTEND_URL || 'http://localhost:3000',
+            'https://*.vercel.app',
+            'https://*.railway.app',
+          ],
           fontSrc: ["'self'"],
           objectSrc: ["'none'"],
           mediaSrc: ["'self'"],
@@ -108,12 +113,29 @@ async function bootstrap() {
         return callback(null, true);
       }
 
+      // Permitir dominios de Vercel (para frontend en producción)
+      if (normalizedOrigin.includes('.vercel.app') || normalizedOrigin.includes('vercel.app')) {
+        logger.debug(`CORS: Origen permitido (Vercel): ${origin}`, 'CORS');
+        return callback(null, true);
+      }
+
+      // Permitir múltiples orígenes desde variable de entorno (separados por coma)
+      const allowedOrigins = process.env.ALLOWED_ORIGINS;
+      if (allowedOrigins) {
+        const originsList = allowedOrigins.split(',').map((o) => o.trim().toLowerCase().replace(/\/$/, ''));
+        if (originsList.includes(normalizedOrigin)) {
+          logger.debug(`CORS: Origen permitido (ALLOWED_ORIGINS): ${origin}`, 'CORS');
+          return callback(null, true);
+        }
+      }
+
       // Log para debugging
       logger.warn(`CORS: Origen bloqueado: ${origin}`, 'CORS', {
         normalizedOrigin,
         originDomain,
         normalizedFrontendUrl,
         frontendDomain,
+        allowedOrigins: process.env.ALLOWED_ORIGINS,
       });
       callback(new Error('No permitido por CORS'));
     },
