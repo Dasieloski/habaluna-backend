@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
+import { LowStockAlertDto } from './dto/low-stock-alert.dto';
 
 @Injectable()
 export class ProductsService {
@@ -806,5 +807,132 @@ export class ProductsService {
     return this.prisma.product.delete({
       where: { id },
     });
+  }
+
+  /**
+   * Obtener productos con stock bajo
+   * @param threshold - Umbral de stock bajo (default: 10)
+   * @returns Lista de productos con stock bajo
+   */
+  async getLowStockProducts(threshold: number = 10): Promise<LowStockAlertDto[]> {
+    const products = await this.prisma.product.findMany({
+      where: {
+        isActive: true,
+        stock: {
+          lte: threshold,
+        },
+      },
+      include: {
+        variants: {
+          where: {
+            stock: {
+              lte: threshold,
+            },
+          },
+        },
+      },
+      orderBy: {
+        stock: 'asc',
+      },
+    });
+
+    return products.map((product) => {
+      const hasVariants = product.variants.length > 0;
+      const lowStockVariants = hasVariants
+        ? product.variants
+            .filter((v) => v.stock <= threshold)
+            .map((v) => ({
+              id: v.id,
+              name: v.name || product.name,
+              stock: v.stock,
+            }))
+        : undefined;
+
+      return {
+        id: product.id,
+        name: product.name,
+        stock: product.stock,
+        minStock: threshold,
+        hasVariants,
+        lowStockVariants,
+      };
+    });
+  }
+
+  /**
+   * Obtener productos relacionados/sugeridos
+   * Basado en la misma categoría y productos destacados
+   * @param productId - ID del producto actual
+   * @param limit - Número máximo de productos relacionados (default: 4)
+   * @returns Lista de productos relacionados
+   */
+  async getRelatedProducts(productId: string, limit: number = 4) {
+    // Obtener el producto actual para conocer su categoría
+    const currentProduct = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { categoryId: true },
+    });
+
+    if (!currentProduct) {
+      return [];
+    }
+
+    // Buscar productos de la misma categoría, excluyendo el actual
+    const relatedProducts = await this.prisma.product.findMany({
+      where: {
+        id: {
+          not: productId,
+        },
+        categoryId: currentProduct.categoryId,
+        isActive: true,
+        stock: {
+          gt: 0, // Solo productos con stock
+        },
+      },
+      take: limit,
+      orderBy: [
+        { isFeatured: 'desc' }, // Priorizar destacados
+        { createdAt: 'desc' }, // Luego los más recientes
+      ],
+      include: {
+        category: {
+          select: {
+            name: true,
+            slug: true,
+          },
+        },
+        variants: {
+          where: {
+            stock: {
+              gt: 0,
+            },
+          },
+          take: 1,
+        },
+      },
+    });
+
+    return relatedProducts.map((product) => ({
+      id: product.id,
+      name: product.name,
+      slug: product.slug,
+      description: product.description,
+      shortDescription: product.shortDescription,
+      priceUSD: product.priceUSD ? Number(product.priceUSD) : null,
+      priceMNs: product.priceMNs ? Number(product.priceMNs) : null,
+      comparePriceUSD: product.comparePriceUSD ? Number(product.comparePriceUSD) : null,
+      comparePriceMNs: product.comparePriceMNs ? Number(product.comparePriceMNs) : null,
+      stock: product.stock,
+      images: product.images,
+      isFeatured: product.isFeatured,
+      category: product.category,
+      variants: product.variants.map((v) => ({
+        id: v.id,
+        name: v.name,
+        priceUSD: v.priceUSD ? Number(v.priceUSD) : null,
+        priceMNs: v.priceMNs ? Number(v.priceMNs) : null,
+        stock: v.stock,
+      })),
+    }));
   }
 }

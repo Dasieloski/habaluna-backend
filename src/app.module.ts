@@ -20,6 +20,9 @@ import { UiSettingsModule } from './ui-settings/ui-settings.module';
 import { LoggerModule } from './common/logger/logger.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { HealthModule } from './health/health.module';
+import { SearchModule } from './search/search.module';
+import { ReportsModule } from './reports/reports.module';
+import { CacheModule } from './common/cache/cache.module';
 
 @Module({
   imports: [
@@ -86,6 +89,9 @@ import { HealthModule } from './health/health.module';
     WishlistModule,
     UiSettingsModule,
     HealthModule,
+    SearchModule,
+    ReportsModule,
+    CacheModule,
   ],
   providers: [
     HttpExceptionFilter,

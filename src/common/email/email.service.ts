@@ -131,6 +131,38 @@ export class EmailService {
     return this.sendEmail({ from, to: params.to, subject, text, html });
   }
 
+  async sendLowStockAlert(params: {
+    to: string;
+    products: Array<{ name: string; stock: number; category: string; sku: string }>;
+    threshold: number;
+    totalProducts: number;
+  }) {
+    const from = this.config.get<string>('EMAIL_FROM') ?? 'no-reply@habanaluna.local';
+    const subject = `⚠️ Alerta de Stock Bajo - ${params.totalProducts} productos`;
+    const productsList = params.products
+      .map((p) => `• ${p.name} (${p.category}) - Stock: ${p.stock} unidades - SKU: ${p.sku}`)
+      .join('\n');
+    const text = `Alerta de Stock Bajo\n\nSe encontraron ${params.totalProducts} productos con stock por debajo del umbral de ${params.threshold} unidades:\n\n${productsList}\n\nPor favor, revisa el inventario y reabastece estos productos.`;
+    const html = this.getEmailTemplate({
+      title: '⚠️ Alerta de Stock Bajo',
+      greeting: 'Hola,',
+      content: `
+        <p>Se encontraron <strong>${params.totalProducts} productos</strong> con stock por debajo del umbral de <strong>${params.threshold} unidades</strong>.</p>
+        <div style="background-color: #fff3cd; padding: 15px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #ffc107;">
+          <h3 style="margin-top: 0; color: #856404;">Productos con Stock Bajo:</h3>
+          <ul style="margin: 0; padding-left: 20px;">
+            ${params.products.map((p) => `<li><strong>${p.name}</strong> (${p.category})<br>Stock: ${p.stock} unidades | SKU: ${p.sku}</li>`).join('')}
+          </ul>
+        </div>
+        <p>Por favor, revisa el inventario y reabastece estos productos lo antes posible.</p>
+      `,
+      buttonText: 'Ver Inventario',
+      buttonUrl: `${this.getFrontendUrl()}/admin/products?lowStock=true`,
+    });
+
+    return this.sendEmail({ from, to: params.to, subject, text, html });
+  }
+
   private async sendEmail(params: {
     from: string;
     to: string;

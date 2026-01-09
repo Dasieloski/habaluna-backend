@@ -41,6 +41,27 @@ export class OrdersService {
     // Generate order number
     const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
+    // Validar stock antes de crear la orden
+    for (const item of cart.items) {
+      const stock = item.productVariant ? item.productVariant.stock : item.product.stock;
+      
+      if (stock < item.quantity) {
+        const itemName = item.productVariant
+          ? `${item.product.name} - ${item.productVariant.name}`
+          : item.product.name;
+        throw new BadRequestException(
+          `Stock insuficiente para ${itemName}. Stock disponible: ${stock}, solicitado: ${item.quantity}`
+        );
+      }
+
+      // Validar que el producto esté activo
+      if (!item.product.isActive) {
+        throw new BadRequestException(
+          `El producto ${item.product.name} ya no está disponible`
+        );
+      }
+    }
+
     // Calculate totals (todo en USD)
     const subtotal = cart.subtotal; // Ya está en USD
     const tax = subtotal * 0.21; // 21% IVA

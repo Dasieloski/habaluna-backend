@@ -24,6 +24,8 @@ export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
 
   @Get()
+  @UseInterceptors(CacheInterceptor)
+  @CacheTTL(1800) // Cache por 30 minutos (categorías cambian raramente)
   @ApiOperation({ summary: 'Get all categories' })
   async findAll() {
     return this.categoriesService.findAll();
