@@ -154,6 +154,8 @@ model Product {
   allergens        String[]
   nutritionalInfo  Json?
   weight           Decimal? @db.Decimal(10, 2)
+  averageRating    Decimal? @db.Decimal(3, 2) // Rating promedio (0.00 a 5.00)
+  reviewCount      Int      @default(0) // Número de reviews aprobadas
   categoryId       String
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
