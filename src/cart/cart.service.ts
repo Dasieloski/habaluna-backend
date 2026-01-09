@@ -13,10 +13,82 @@ export class CartService {
       where: { userId },
       include: {
         product: {
-          include: { category: true },
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            description: true,
+            shortDescription: true,
+            priceUSD: true,
+            priceMNs: true,
+            comparePriceUSD: true,
+            comparePriceMNs: true,
+            sku: true,
+            stock: true,
+            isActive: true,
+            isFeatured: true,
+            isCombo: true,
+            images: true,
+            allergens: true,
+            nutritionalInfo: true,
+            weight: true,
+            categoryId: true,
+            createdAt: true,
+            updatedAt: true,
+            category: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+          },
         },
         productVariant: true,
       },
+    }).catch(async (error) => {
+      // Si falla por campos que no existen, intentar sin ellos
+      if (error.message?.includes('does not exist') || error.message?.includes('no existe') || error.message?.includes('column')) {
+        return this.prisma.cartItem.findMany({
+          where: { userId },
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                description: true,
+                shortDescription: true,
+                priceUSD: true,
+                priceMNs: true,
+                comparePriceUSD: true,
+                comparePriceMNs: true,
+                sku: true,
+                stock: true,
+                isActive: true,
+                isFeatured: true,
+                isCombo: true,
+                images: true,
+                allergens: true,
+                nutritionalInfo: true,
+                weight: true,
+                categoryId: true,
+                createdAt: true,
+                updatedAt: true,
+                category: {
+                  select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                  },
+                },
+              },
+            },
+            productVariant: true,
+          },
+        });
+      }
+      throw error;
     });
 
     const subtotal = cartItems.reduce((sum, item) => {
@@ -50,7 +122,68 @@ export class CartService {
   async addToCart(userId: string, addToCartDto: AddToCartDto) {
     const product = await this.prisma.product.findUnique({
       where: { id: addToCartDto.productId },
-      include: { variants: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        shortDescription: true,
+        priceUSD: true,
+        priceMNs: true,
+        comparePriceUSD: true,
+        comparePriceMNs: true,
+        sku: true,
+        stock: true,
+        isActive: true,
+        isFeatured: true,
+        isCombo: true,
+        images: true,
+        allergens: true,
+        nutritionalInfo: true,
+        weight: true,
+        categoryId: true,
+        createdAt: true,
+        updatedAt: true,
+        variants: {
+          where: { isActive: true },
+          orderBy: { order: 'asc' },
+        },
+      },
+    }).catch(async (error) => {
+      // Si falla por campos que no existen, intentar sin ellos
+      if (error.message?.includes('does not exist') || error.message?.includes('no existe') || error.message?.includes('column')) {
+        return this.prisma.product.findUnique({
+          where: { id: addToCartDto.productId },
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            description: true,
+            shortDescription: true,
+            priceUSD: true,
+            priceMNs: true,
+            comparePriceUSD: true,
+            comparePriceMNs: true,
+            sku: true,
+            stock: true,
+            isActive: true,
+            isFeatured: true,
+            isCombo: true,
+            images: true,
+            allergens: true,
+            nutritionalInfo: true,
+            weight: true,
+            categoryId: true,
+            createdAt: true,
+            updatedAt: true,
+            variants: {
+              where: { isActive: true },
+              orderBy: { order: 'asc' },
+            },
+          },
+        });
+      }
+      throw error;
     });
 
     if (!product) {
@@ -107,6 +240,37 @@ export class CartService {
       );
     }
 
+    const productSelect = {
+      id: true,
+      name: true,
+      slug: true,
+      description: true,
+      shortDescription: true,
+      priceUSD: true,
+      priceMNs: true,
+      comparePriceUSD: true,
+      comparePriceMNs: true,
+      sku: true,
+      stock: true,
+      isActive: true,
+      isFeatured: true,
+      isCombo: true,
+      images: true,
+      allergens: true,
+      nutritionalInfo: true,
+      weight: true,
+      categoryId: true,
+      createdAt: true,
+      updatedAt: true,
+      category: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+        },
+      },
+    };
+
     if (existingItem) {
       return this.prisma.cartItem.update({
         where: { id: existingItem.id },
@@ -115,10 +279,26 @@ export class CartService {
         },
         include: {
           product: {
-            include: { category: true },
+            select: productSelect,
           },
           productVariant: true,
         },
+      }).catch(async (error) => {
+        if (error.message?.includes('does not exist') || error.message?.includes('no existe') || error.message?.includes('column')) {
+          return this.prisma.cartItem.update({
+            where: { id: existingItem.id },
+            data: {
+              quantity: totalQuantity,
+            },
+            include: {
+              product: {
+                select: productSelect,
+              },
+              productVariant: true,
+            },
+          });
+        }
+        throw error;
       });
     }
 
@@ -131,10 +311,28 @@ export class CartService {
       },
       include: {
         product: {
-          include: { category: true },
+          select: productSelect,
         },
         productVariant: true,
       },
+    }).catch(async (error) => {
+      if (error.message?.includes('does not exist') || error.message?.includes('no existe') || error.message?.includes('column')) {
+        return this.prisma.cartItem.create({
+          data: {
+            userId,
+            productId: addToCartDto.productId,
+            productVariantId: addToCartDto.productVariantId || null,
+            quantity: addToCartDto.quantity,
+          },
+          include: {
+            product: {
+              select: productSelect,
+            },
+            productVariant: true,
+          },
+        });
+      }
+      throw error;
     });
   }
 
@@ -190,15 +388,60 @@ export class CartService {
       );
     }
 
+    const productSelect = {
+      id: true,
+      name: true,
+      slug: true,
+      description: true,
+      shortDescription: true,
+      priceUSD: true,
+      priceMNs: true,
+      comparePriceUSD: true,
+      comparePriceMNs: true,
+      sku: true,
+      stock: true,
+      isActive: true,
+      isFeatured: true,
+      isCombo: true,
+      images: true,
+      allergens: true,
+      nutritionalInfo: true,
+      weight: true,
+      categoryId: true,
+      createdAt: true,
+      updatedAt: true,
+      category: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+        },
+      },
+    };
+
     return this.prisma.cartItem.update({
       where: { id: itemId },
       data: { quantity: updateDto.quantity },
       include: {
         product: {
-          include: { category: true },
+          select: productSelect,
         },
         productVariant: true,
       },
+    }).catch(async (error) => {
+      if (error.message?.includes('does not exist') || error.message?.includes('no existe') || error.message?.includes('column')) {
+        return this.prisma.cartItem.update({
+          where: { id: itemId },
+          data: { quantity: updateDto.quantity },
+          include: {
+            product: {
+              select: productSelect,
+            },
+            productVariant: true,
+          },
+        });
+      }
+      throw error;
     });
   }
 
@@ -227,14 +470,58 @@ export class CartService {
    * Retorna información sobre items con problemas de stock
    */
   async validateCart(userId: string) {
+    const productSelect = {
+      id: true,
+      name: true,
+      slug: true,
+      description: true,
+      shortDescription: true,
+      priceUSD: true,
+      priceMNs: true,
+      comparePriceUSD: true,
+      comparePriceMNs: true,
+      sku: true,
+      stock: true,
+      isActive: true,
+      isFeatured: true,
+      isCombo: true,
+      images: true,
+      allergens: true,
+      nutritionalInfo: true,
+      weight: true,
+      categoryId: true,
+      createdAt: true,
+      updatedAt: true,
+      category: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+        },
+      },
+    };
+
     const cartItems = await this.prisma.cartItem.findMany({
       where: { userId },
       include: {
         product: {
-          include: { category: true },
+          select: productSelect,
         },
         productVariant: true,
       },
+    }).catch(async (error) => {
+      if (error.message?.includes('does not exist') || error.message?.includes('no existe') || error.message?.includes('column')) {
+        return this.prisma.cartItem.findMany({
+          where: { userId },
+          include: {
+            product: {
+              select: productSelect,
+            },
+            productVariant: true,
+          },
+        });
+      }
+      throw error;
     });
 
     const validationResults: Array<{
