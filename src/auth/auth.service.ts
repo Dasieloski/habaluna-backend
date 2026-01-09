@@ -85,6 +85,17 @@ export class AuthService {
       password: hashedPassword,
     });
 
+    // Enviar email de bienvenida (no bloquea el registro si falla)
+    try {
+      await this.email.sendWelcomeEmail({
+        to: user.email,
+        firstName: user.firstName || undefined,
+      });
+    } catch (error) {
+      this.logger.warn('Error enviando email de bienvenida', error instanceof Error ? error.stack : String(error));
+      // No fallar el registro si el email falla
+    }
+
     const tokens = await this.generateTokens(user.id, user.email, user.role);
     return {
       user: {

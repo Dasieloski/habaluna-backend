@@ -177,7 +177,7 @@ describe('OrdersService', () => {
             subtotal: 20.0,
             tax: 4.2, // 20 * 0.21
             shipping: 5.99, // Menos de 50 USD
-            total: 30.19, // 20 + 4.2 + 5.99
+            total: expect.closeTo(30.19, 2), // 20 + 4.2 + 5.99 (usar closeTo para evitar problemas de precisión)
           }),
         }),
       );
@@ -301,7 +301,7 @@ describe('OrdersService', () => {
     };
 
     it('debería actualizar una orden', async () => {
-      prismaService.order.findFirst.mockResolvedValue(mockOrder as any);
+      prismaService.order.findUnique.mockResolvedValue(mockOrder as any);
       prismaService.order.update.mockResolvedValue({
         ...mockOrder,
         ...updateDto,
@@ -314,7 +314,7 @@ describe('OrdersService', () => {
     });
 
     it('debería lanzar NotFoundException si la orden no existe', async () => {
-      prismaService.order.findFirst.mockResolvedValue(null);
+      prismaService.order.findUnique.mockResolvedValue(null);
 
       await expect(service.update('nonexistent-id', updateDto)).rejects.toThrow(NotFoundException);
     });

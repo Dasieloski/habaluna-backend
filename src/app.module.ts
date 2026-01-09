@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+//import { CsrfGuard } from './common/guards/csrf.guard';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -38,12 +40,28 @@ import { HealthModule } from './health/health.module';
           config.get<string>('THROTTLE_AUTH_TTL_SECONDS') ?? authTtlSecondsDefault,
         );
 
+        // Configuración de rate limiting
+        const globalLimitDefault = isProd ? 100 : 1000;
+        const globalTtlSecondsDefault = 60; // 1 minuto
+
+        const globalLimit = Number(
+          config.get<string>('THROTTLE_GLOBAL_LIMIT') ?? globalLimitDefault,
+        );
+        const globalTtlSeconds = Number(
+          config.get<string>('THROTTLE_GLOBAL_TTL_SECONDS') ?? globalTtlSecondsDefault,
+        );
+
         return {
           throttlers: [
             {
               name: 'auth',
               ttl: authTtlSeconds,
               limit: authLimit,
+            },
+            {
+              name: 'default',
+              ttl: globalTtlSeconds,
+              limit: globalLimit,
             },
           ],
           // Mensaje claro para 429
@@ -69,6 +87,13 @@ import { HealthModule } from './health/health.module';
     UiSettingsModule,
     HealthModule,
   ],
-  providers: [HttpExceptionFilter],
+  providers: [
+    HttpExceptionFilter,
+    // Aplicar rate limiting globalmente a todos los endpoints
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

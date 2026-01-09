@@ -1,9 +1,11 @@
 import { IsEmail, IsString, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsStrongPassword } from '../../common/validators/is-strong-password.validator';
+import { SanitizeEmail, SanitizeString } from '../../common/transformers/sanitize.transformer';
 
 export class RegisterDto {
   @ApiProperty({ example: 'user@example.com' })
+  @SanitizeEmail()
   @IsEmail()
   email: string;
 
@@ -28,11 +30,13 @@ export class RegisterDto {
 
   @ApiProperty({ example: 'John', required: false })
   @IsOptional()
+  @SanitizeString()
   @IsString()
   firstName?: string;
 
   @ApiProperty({ example: 'Doe', required: false })
   @IsOptional()
+  @SanitizeString()
   @IsString()
   lastName?: string;
 }

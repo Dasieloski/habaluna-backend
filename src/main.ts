@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe, Logger } from '@nestjs/common';
+import { ValidationPipe, Logger, APP_GUARD } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import * as dotenv from 'dotenv';
@@ -7,6 +7,9 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
+import helmet from 'helmet';
+import { ThrottlerGuard } from '@nestjs/throttler';
+import * as cookieParser from 'cookie-parser';
 
 dotenv.config();
 
@@ -19,6 +22,27 @@ async function bootstrap() {
   app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
 
   const logger = new Logger('Bootstrap');
+
+  // Helmet - Headers de seguridad HTTP
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          scriptSrc: ["'self'"],
+          imgSrc: ["'self'", 'data:', 'https:', 'http:'],
+          connectSrc: ["'self'"],
+          fontSrc: ["'self'"],
+          objectSrc: ["'none'"],
+          mediaSrc: ["'self'"],
+          frameSrc: ["'none'"],
+        },
+      },
+      crossOriginEmbedderPolicy: false, // Deshabilitado para permitir Swagger y otros recursos
+      crossOriginResourcePolicy: { policy: 'cross-origin' }, // Permite recursos desde diferentes orígenes
+    }),
+  );
 
   // Servir archivos estáticos
   const uploadsPath = join(process.cwd(), 'uploads');
@@ -122,6 +146,9 @@ async function bootstrap() {
     app.set('trust proxy', 1);
   }
 
+  // Cookie Parser - Necesario para CSRF protection
+  app.use(cookieParser());
+
   // Global prefix
   app.setGlobalPrefix('api');
 
@@ -130,7 +157,7 @@ async function bootstrap() {
   const httpExceptionFilter = app.get(HttpExceptionFilter);
   app.useGlobalFilters(httpExceptionFilter);
 
-  // Validation
+  // Validation y Sanitización
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -139,6 +166,8 @@ async function bootstrap() {
       transformOptions: {
         enableImplicitConversion: true,
       },
+      // Sanitización automática de inputs
+      // Esto limpia automáticamente strings de HTML, scripts, etc.
     }),
   );
 

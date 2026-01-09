@@ -1,16 +1,20 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { CartService } from '../cart/cart.service';
 import { convertToUSD } from '../common/utils/currency.utils';
+import { EmailService } from '../common/email/email.service';
 
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
+
   constructor(
     private prisma: PrismaService,
     private cartService: CartService,
+    private emailService: EmailService,
   ) {}
 
   async create(userId: string, createOrderDto: CreateOrderDto) {
@@ -162,8 +166,8 @@ export class OrdersService {
   }
 
   async updateStatus(id: string, updateDto: UpdateOrderStatusDto) {
-    await this.findOne(id);
-    return this.prisma.order.update({
+    const order = await this.findOne(id);
+    const updatedOrder = await this.prisma.order.update({
       where: { id },
       data: {
         status: updateDto.status,
@@ -176,8 +180,31 @@ export class OrdersService {
             productVariant: true,
           },
         },
+        user: {
+          select: {
+            email: true,
+            firstName: true,
+          },
+        },
       },
     });
+
+    // Enviar email de actualización de estado (solo si cambió el estado)
+    if (updateDto.status && updateDto.status !== order.status) {
+      try {
+        await this.emailService.sendOrderStatusUpdateEmail({
+          to: updatedOrder.user.email,
+          orderNumber: updatedOrder.orderNumber,
+          status: updateDto.status,
+          firstName: updatedOrder.user.firstName || undefined,
+        });
+      } catch (error) {
+        this.logger.warn('Error enviando email de actualización de pedido', error instanceof Error ? error.stack : String(error));
+        // No fallar la actualización si el email falla
+      }
+    }
+
+    return updatedOrder;
   }
 
   async update(id: string, updateDto: UpdateOrderDto, userId?: string) {
@@ -244,7 +271,7 @@ export class OrdersService {
       await this.cartService.clearCart(order.userId);
 
       // Actualizar orden con paymentIntentId y cambiar estado a PROCESSING
-      return this.prisma.order.update({
+      const updatedOrder = await this.prisma.order.update({
         where: { id },
         data: {
           paymentIntentId: updateDto.paymentIntentId,
@@ -258,8 +285,29 @@ export class OrdersService {
               productVariant: true,
             },
           },
+          user: {
+            select: {
+              email: true,
+              firstName: true,
+            },
+          },
         },
       });
+
+      // Enviar email de confirmación de pedido
+      try {
+        await this.emailService.sendOrderConfirmationEmail({
+          to: updatedOrder.user.email,
+          orderNumber: updatedOrder.orderNumber,
+          total: Number(updatedOrder.total),
+          firstName: updatedOrder.user.firstName || undefined,
+        });
+      } catch (error) {
+        this.logger.warn('Error enviando email de confirmación de pedido', error instanceof Error ? error.stack : String(error));
+        // No fallar la actualización si el email falla
+      }
+
+      return updatedOrder;
     }
 
     // Si solo se actualiza el paymentIntentId sin cambiar el estado

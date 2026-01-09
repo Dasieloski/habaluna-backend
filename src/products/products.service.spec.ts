@@ -199,10 +199,14 @@ describe('ProductsService', () => {
       expect(prismaService.product.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            priceUSD: expect.objectContaining({
-              gte: 5,
-              lte: 15,
-            }),
+            OR: expect.arrayContaining([
+              expect.objectContaining({
+                priceUSD: expect.objectContaining({
+                  gte: 5,
+                  lte: 15,
+                }),
+              }),
+            ]),
           }),
         }),
       );
@@ -280,15 +284,26 @@ describe('ProductsService', () => {
     };
 
     it('debería actualizar un producto exitosamente', async () => {
-      const updatedProduct = { ...mockProduct, ...updateProductDto };
+      const updatedProduct = { ...mockProduct, ...updateProductDto, category: mockCategory };
       prismaService.product.findUnique.mockResolvedValue(mockProduct as any);
-      prismaService.product.update.mockResolvedValue(updatedProduct as any);
+      prismaService.category.findUnique.mockResolvedValue(mockCategory as any);
+      prismaService.$transaction.mockImplementation(async (callback: any) => {
+        return callback({
+          product: {
+            update: jest.fn().mockResolvedValue(updatedProduct),
+            delete: jest.fn(),
+          },
+          comboItem: {
+            deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+          },
+        });
+      });
 
       const result = await service.update('product-1', updateProductDto);
 
       expect(result.name).toBe('Updated Product');
       expect(result.stock).toBe(20);
-      expect(prismaService.product.update).toHaveBeenCalled();
+      expect(prismaService.$transaction).toHaveBeenCalled();
     });
 
     it('debería lanzar NotFoundException si el producto no existe', async () => {
