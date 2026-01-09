@@ -6,6 +6,7 @@ import { UpdateOrderDto } from './dto/update-order.dto';
 import { CartService } from '../cart/cart.service';
 import { convertToUSD } from '../common/utils/currency.utils';
 import { EmailService } from '../common/email/email.service';
+import { OffersService } from '../offers/offers.service';
 
 @Injectable()
 export class OrdersService {
@@ -15,6 +16,7 @@ export class OrdersService {
     private prisma: PrismaService,
     private cartService: CartService,
     private emailService: EmailService,
+    private offersService: OffersService,
   ) {}
 
   async create(userId: string, createOrderDto: CreateOrderDto) {
@@ -57,6 +59,7 @@ export class OrdersService {
         shippingAddress: createOrderDto.shippingAddress,
         billingAddress: createOrderDto.billingAddress || createOrderDto.shippingAddress,
         paymentIntentId: createOrderDto.paymentIntentId,
+        offerId: createOrderDto.offerId,
         notes: createOrderDto.notes,
         status: 'PENDING', // Estado pendiente hasta que se confirme el pago
         paymentStatus: 'PENDING',

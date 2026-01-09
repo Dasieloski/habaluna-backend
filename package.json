@@ -51,6 +51,7 @@
     "csurf": "^1.11.0",
     "dotenv": "^16.3.1",
     "form-data": "^4.0.5",
+    "helmet": "^7.1.0",
     "multer": "^1.4.5-lts.1",
     "nest-winston": "^1.10.2",
     "nodemailer": "^7.0.12",

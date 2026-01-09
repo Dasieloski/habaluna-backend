@@ -97,4 +97,111 @@ export class OffersService {
     await this.findOneAdmin(id);
     return this.prisma.offer.delete({ where: { id } });
   }
+
+  /**
+   * Validar y aplicar un cupón/offer
+   * Retorna el descuento calculado y la información de la oferta
+   */
+  async validateOffer(code: string, subtotal: number): Promise<{
+    valid: boolean;
+    discount: number;
+    offer?: any;
+    message?: string;
+  }> {
+    const offer = await this.prisma.offer.findUnique({
+      where: { code: code.toUpperCase().trim() },
+    });
+
+    if (!offer) {
+      return {
+        valid: false,
+        discount: 0,
+        message: 'Cupón no encontrado',
+      };
+    }
+
+    // Validar que esté activo
+    if (!offer.isActive) {
+      return {
+        valid: false,
+        discount: 0,
+        message: 'Este cupón no está activo',
+      };
+    }
+
+    // Validar fechas
+    const now = new Date();
+    if (now < offer.startDate) {
+      return {
+        valid: false,
+        discount: 0,
+        message: 'Este cupón aún no está disponible',
+      };
+    }
+
+    if (now > offer.endDate) {
+      return {
+        valid: false,
+        discount: 0,
+        message: 'Este cupón ha expirado',
+      };
+    }
+
+    // Validar compra mínima
+    if (offer.minPurchase && subtotal < Number(offer.minPurchase)) {
+      return {
+        valid: false,
+        discount: 0,
+        message: `El cupón requiere una compra mínima de $${Number(offer.minPurchase).toFixed(2)}`,
+      };
+    }
+
+    // Validar límite de uso
+    if (offer.usageLimit && offer.usageCount >= offer.usageLimit) {
+      return {
+        valid: false,
+        discount: 0,
+        message: 'Este cupón ha alcanzado su límite de uso',
+      };
+    }
+
+    // Calcular descuento
+    let discount = 0;
+    if (offer.type === 'PERCENTAGE') {
+      discount = (subtotal * Number(offer.value)) / 100;
+    } else if (offer.type === 'FIXED') {
+      discount = Number(offer.value);
+      // El descuento no puede ser mayor que el subtotal
+      if (discount > subtotal) {
+        discount = subtotal;
+      }
+    }
+
+    return {
+      valid: true,
+      discount,
+      offer: {
+        id: offer.id,
+        name: offer.name,
+        code: offer.code,
+        type: offer.type,
+        value: offer.value,
+      },
+    };
+  }
+
+  /**
+   * Incrementar el contador de uso de un cupón
+   * Se llama cuando un cupón se aplica exitosamente en una orden
+   */
+  async incrementUsageCount(offerId: string): Promise<void> {
+    await this.prisma.offer.update({
+      where: { id: offerId },
+      data: {
+        usageCount: {
+          increment: 1,
+        },
+      },
+    });
+  }
 }

@@ -36,4 +36,9 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiProperty({ required: false, description: 'ID del cupón/offer aplicado' })
+  @IsOptional()
+  @IsString()
+  offerId?: string;
 }
