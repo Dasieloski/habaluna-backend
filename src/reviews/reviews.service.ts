@@ -195,7 +195,9 @@ export class ReviewsService {
       data: {
         productId,
         userId,
-        authorName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Usuario',
+        authorName: user
+          ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Usuario'
+          : 'Usuario',
         authorEmail: user?.email,
         rating: dto.rating,
         title: dto.title,
