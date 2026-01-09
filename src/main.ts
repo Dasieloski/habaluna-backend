@@ -9,6 +9,12 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import helmet from 'helmet';
 import * as cookieParser from 'cookie-parser';
+import * as crypto from 'crypto';
+
+// Asegurar que crypto esté disponible globalmente para @nestjs/schedule
+if (typeof globalThis.crypto === 'undefined') {
+  (globalThis as any).crypto = crypto;
+}
 
 dotenv.config();
 
@@ -58,19 +64,22 @@ async function bootstrap() {
 
   app.enableCors({
     origin: (origin, callback) => {
-      // Log para debugging
-      logger.debug(`CORS: Request recibido, origin: ${origin || 'null'}`, 'CORS');
+      // Log para debugging (usar log en lugar de debug para que se vea en producción)
+      logger.log(`CORS: Request recibido, origin: ${origin || 'null'}`, 'CORS');
 
       // Permitir requests sin origin (mobile apps, Postman, curl, etc.)
       if (!origin) {
+        logger.log('CORS: Request sin origin permitido', 'CORS');
         return callback(null, true);
       }
 
       const normalizedOrigin = origin.replace(/\/$/, '').toLowerCase();
+      logger.log(`CORS: normalizedOrigin=${normalizedOrigin}`, 'CORS');
 
       // En desarrollo, permitir cualquier origen localhost
       if (process.env.NODE_ENV !== 'production') {
         if (normalizedOrigin.includes('localhost') || normalizedOrigin.includes('127.0.0.1')) {
+          logger.log(`CORS: Origen localhost permitido: ${origin}`, 'CORS');
           return callback(null, true);
         }
       }
@@ -78,6 +87,7 @@ async function bootstrap() {
       // Verificar coincidencia exacta con orígenes permitidos
       const normalizedAllowed = allowedOriginsList.map((o) => o.replace(/\/$/, '').toLowerCase());
       if (normalizedAllowed.includes(normalizedOrigin)) {
+        logger.log(`CORS: Origen permitido (exacto): ${origin}`, 'CORS');
         return callback(null, true);
       }
 
@@ -86,12 +96,14 @@ async function bootstrap() {
       for (const allowedOrigin of normalizedAllowed) {
         const allowedDomain = getBaseDomain(allowedOrigin);
         if (originDomain === allowedDomain) {
+          logger.log(`CORS: Origen permitido (mismo dominio): ${origin} (${originDomain})`, 'CORS');
           return callback(null, true);
         }
       }
 
       // Permitir dominios de Railway (para desarrollo/testing)
       if (normalizedOrigin.includes('.railway.app')) {
+        logger.log(`CORS: Origen Railway permitido: ${origin}`, 'CORS');
         return callback(null, true);
       }
 
@@ -144,6 +156,37 @@ async function bootstrap() {
     maxAge: 86400, // 24 horas
     preflightContinue: false,
     optionsSuccessStatus: 204,
+  });
+
+  // IMPORTANTE: Manejar OPTIONS requests manualmente si es necesario
+  // Esto asegura que el preflight request siempre pase
+  app.use((req, res, next) => {
+    if (req.method === 'OPTIONS') {
+      const origin = req.headers.origin;
+      if (origin) {
+        const normalizedOrigin = origin.replace(/\/$/, '').toLowerCase();
+        // Permitir cualquier origen de Vercel o Railway en producción
+        if (
+          normalizedOrigin.includes('.vercel.app') ||
+          normalizedOrigin.includes('vercel.app') ||
+          normalizedOrigin.includes('.railway.app')
+        ) {
+          res.header('Access-Control-Allow-Origin', origin);
+          res.header('Access-Control-Allow-Credentials', 'true');
+          res.header(
+            'Access-Control-Allow-Methods',
+            'GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD',
+          );
+          res.header(
+            'Access-Control-Allow-Headers',
+            'Content-Type, Authorization, X-Requested-With, Accept, Origin, Access-Control-Request-Method, Access-Control-Request-Headers, X-CSRF-Token',
+          );
+          res.header('Access-Control-Max-Age', '86400');
+          return res.status(204).end();
+        }
+      }
+    }
+    next();
   });
 
   // Helmet - Headers de seguridad HTTP (después de CORS)

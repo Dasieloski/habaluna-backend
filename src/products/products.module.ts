@@ -6,11 +6,10 @@ import { ProductVariantsController } from './product-variants.controller';
 import { SearchModule } from '../search/search.module';
 import { ProductsSchedulerService } from './products-scheduler.service';
 import { EmailService } from '../common/email/email.service';
-import { ScheduleModule } from '@nestjs/schedule';
 import { CacheModule } from '../common/cache/cache.module';
 
 @Module({
-  imports: [SearchModule, ScheduleModule.forRoot(), CacheModule],
+  imports: [SearchModule, CacheModule],
   controllers: [ProductsController, ProductVariantsController],
   providers: [ProductsService, ProductVariantsService, ProductsSchedulerService, EmailService],
   exports: [ProductsService, ProductVariantsService],
