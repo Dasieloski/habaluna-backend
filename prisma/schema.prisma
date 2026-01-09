@@ -83,6 +83,8 @@ model Offer {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  orders Order[]
+
   @@index([code])
   @@index([isActive])
   @@map("offers")
@@ -297,17 +299,19 @@ model Order {
   shippingAddress Json
   billingAddress  Json
   paymentIntentId String?
-  offerId         String?       // ID del cupón/offer aplicado
+  offerId         String?       @map("offer_id") // ID del cupón/offer aplicado
   notes           String?       @db.Text
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
   user  User        @relation(fields: [userId], references: [id])
+  offer Offer?      @relation(fields: [offerId], references: [id])
   items OrderItem[]
 
   @@index([userId])
   @@index([orderNumber])
   @@index([status])
+  @@index([offerId])
   @@map("orders")
 }
 
