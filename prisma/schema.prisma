@@ -368,6 +368,8 @@ model UiSettings {
   id                 String   @id @default(uuid())
   headerAnnouncement String   @default("Envíos a toda la Habana - Entrega rápida")
   headerHighlights   Json?
+  // IDs de categorías a mostrar en el menú principal (ordenadas, idealmente 6)
+  headerNavCategories Json?
   benefits           Json?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt

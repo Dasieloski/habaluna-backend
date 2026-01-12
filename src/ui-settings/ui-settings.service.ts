@@ -15,6 +15,7 @@ export class UiSettingsService {
         'Pago seguro',
         '4.8/5 valoración',
       ],
+      headerNavCategories: [],
       benefits: [
         {
           title: 'VARIEDAD',
@@ -41,6 +42,7 @@ export class UiSettingsService {
       data: {
         headerAnnouncement: d.headerAnnouncement,
         headerHighlights: d.headerHighlights as any,
+        headerNavCategories: d.headerNavCategories as any,
         benefits: d.benefits as any,
       },
     });
@@ -64,6 +66,9 @@ export class UiSettingsService {
           : {}),
         ...(dto.headerHighlights !== undefined
           ? { headerHighlights: dto.headerHighlights as any }
+          : {}),
+        ...(dto.headerNavCategories !== undefined
+          ? { headerNavCategories: dto.headerNavCategories as any }
           : {}),
         ...(dto.benefits !== undefined ? { benefits: dto.benefits as any } : {}),
       },
