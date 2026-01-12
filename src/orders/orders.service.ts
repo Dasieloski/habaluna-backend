@@ -64,7 +64,8 @@ export class OrdersService {
 
     // Calculate totals (todo en USD)
     const subtotal = cart.subtotal; // Ya está en USD
-    const tax = subtotal * 0.21; // 21% IVA
+    // En este flujo (Cuba) no se aplica IVA
+    const tax = 0;
     const shipping = subtotal >= 50 ? 0 : 5.99; // Free shipping over 50 USD
     const total = subtotal + tax + shipping;
 
