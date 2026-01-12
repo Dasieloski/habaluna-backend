@@ -11,7 +11,8 @@ export class RegisterDto {
 
   @ApiProperty({
     example: 'Password123!',
-    description: 'Contraseña con requisitos de seguridad: mínimo 8 caracteres, 1 mayúscula, 1 minúscula, 1 número, 1 símbolo',
+    description:
+      'Contraseña con requisitos de seguridad: mínimo 8 caracteres, 1 mayúscula, 1 minúscula, 1 número, 1 símbolo',
   })
   @IsString()
   @IsStrongPassword(
@@ -23,7 +24,8 @@ export class RegisterDto {
       requireSymbols: true,
     },
     {
-      message: 'La contraseña debe tener mínimo 8 caracteres e incluir al menos una mayúscula, una minúscula, un número y un símbolo',
+      message:
+        'La contraseña debe tener mínimo 8 caracteres e incluir al menos una mayúscula, una minúscula, un número y un símbolo',
     },
   )
   password: string;

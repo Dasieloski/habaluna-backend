@@ -9,87 +9,93 @@ export class CartService {
   constructor(private prisma: PrismaService) {}
 
   async getCart(userId: string) {
-    const cartItems = await this.prisma.cartItem.findMany({
-      where: { userId },
-      include: {
-        product: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            description: true,
-            shortDescription: true,
-            priceUSD: true,
-            priceMNs: true,
-            comparePriceUSD: true,
-            comparePriceMNs: true,
-            sku: true,
-            stock: true,
-            isActive: true,
-            isFeatured: true,
-            isCombo: true,
-            images: true,
-            allergens: true,
-            nutritionalInfo: true,
-            weight: true,
-            categoryId: true,
-            createdAt: true,
-            updatedAt: true,
-            category: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
-              },
-            },
-          },
-        },
-        productVariant: true,
-      },
-    }).catch(async (error) => {
-      // Si falla por campos que no existen, intentar sin ellos
-      if (error.message?.includes('does not exist') || error.message?.includes('no existe') || error.message?.includes('column')) {
-        return this.prisma.cartItem.findMany({
-          where: { userId },
-          include: {
-            product: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
-                description: true,
-                shortDescription: true,
-                priceUSD: true,
-                priceMNs: true,
-                comparePriceUSD: true,
-                comparePriceMNs: true,
-                sku: true,
-                stock: true,
-                isActive: true,
-                isFeatured: true,
-                isCombo: true,
-                images: true,
-                allergens: true,
-                nutritionalInfo: true,
-                weight: true,
-                categoryId: true,
-                createdAt: true,
-                updatedAt: true,
-                category: {
-                  select: {
-                    id: true,
-                    name: true,
-                    slug: true,
-                  },
+    const cartItems = await this.prisma.cartItem
+      .findMany({
+        where: { userId },
+        include: {
+          product: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              description: true,
+              shortDescription: true,
+              priceUSD: true,
+              priceMNs: true,
+              comparePriceUSD: true,
+              comparePriceMNs: true,
+              sku: true,
+              stock: true,
+              isActive: true,
+              isFeatured: true,
+              isCombo: true,
+              images: true,
+              allergens: true,
+              nutritionalInfo: true,
+              weight: true,
+              categoryId: true,
+              createdAt: true,
+              updatedAt: true,
+              category: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
                 },
               },
             },
-            productVariant: true,
           },
-        });
-      }
-      throw error;
-    });
+          productVariant: true,
+        },
+      })
+      .catch(async (error) => {
+        // Si falla por campos que no existen, intentar sin ellos
+        if (
+          error.message?.includes('does not exist') ||
+          error.message?.includes('no existe') ||
+          error.message?.includes('column')
+        ) {
+          return this.prisma.cartItem.findMany({
+            where: { userId },
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                  description: true,
+                  shortDescription: true,
+                  priceUSD: true,
+                  priceMNs: true,
+                  comparePriceUSD: true,
+                  comparePriceMNs: true,
+                  sku: true,
+                  stock: true,
+                  isActive: true,
+                  isFeatured: true,
+                  isCombo: true,
+                  images: true,
+                  allergens: true,
+                  nutritionalInfo: true,
+                  weight: true,
+                  categoryId: true,
+                  createdAt: true,
+                  updatedAt: true,
+                  category: {
+                    select: {
+                      id: true,
+                      name: true,
+                      slug: true,
+                    },
+                  },
+                },
+              },
+              productVariant: true,
+            },
+          });
+        }
+        throw error;
+      });
 
     const subtotal = cartItems.reduce((sum, item) => {
       // Usar precio de la variante si existe, sino el precio del producto
@@ -120,71 +126,77 @@ export class CartService {
   }
 
   async addToCart(userId: string, addToCartDto: AddToCartDto) {
-    const product = await this.prisma.product.findUnique({
-      where: { id: addToCartDto.productId },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        description: true,
-        shortDescription: true,
-        priceUSD: true,
-        priceMNs: true,
-        comparePriceUSD: true,
-        comparePriceMNs: true,
-        sku: true,
-        stock: true,
-        isActive: true,
-        isFeatured: true,
-        isCombo: true,
-        images: true,
-        allergens: true,
-        nutritionalInfo: true,
-        weight: true,
-        categoryId: true,
-        createdAt: true,
-        updatedAt: true,
-        variants: {
-          where: { isActive: true },
-          orderBy: { order: 'asc' },
-        },
-      },
-    }).catch(async (error) => {
-      // Si falla por campos que no existen, intentar sin ellos
-      if (error.message?.includes('does not exist') || error.message?.includes('no existe') || error.message?.includes('column')) {
-        return this.prisma.product.findUnique({
-          where: { id: addToCartDto.productId },
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            description: true,
-            shortDescription: true,
-            priceUSD: true,
-            priceMNs: true,
-            comparePriceUSD: true,
-            comparePriceMNs: true,
-            sku: true,
-            stock: true,
-            isActive: true,
-            isFeatured: true,
-            isCombo: true,
-            images: true,
-            allergens: true,
-            nutritionalInfo: true,
-            weight: true,
-            categoryId: true,
-            createdAt: true,
-            updatedAt: true,
-            variants: {
-              where: { isActive: true },
-              orderBy: { order: 'asc' },
-            },
+    const product = await this.prisma.product
+      .findUnique({
+        where: { id: addToCartDto.productId },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          description: true,
+          shortDescription: true,
+          priceUSD: true,
+          priceMNs: true,
+          comparePriceUSD: true,
+          comparePriceMNs: true,
+          sku: true,
+          stock: true,
+          isActive: true,
+          isFeatured: true,
+          isCombo: true,
+          images: true,
+          allergens: true,
+          nutritionalInfo: true,
+          weight: true,
+          categoryId: true,
+          createdAt: true,
+          updatedAt: true,
+          variants: {
+            where: { isActive: true },
+            orderBy: { order: 'asc' },
           },
-        });
-      }
-      throw error;
-    });
+        },
+      })
+      .catch(async (error) => {
+        // Si falla por campos que no existen, intentar sin ellos
+        if (
+          error.message?.includes('does not exist') ||
+          error.message?.includes('no existe') ||
+          error.message?.includes('column')
+        ) {
+          return this.prisma.product.findUnique({
+            where: { id: addToCartDto.productId },
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              description: true,
+              shortDescription: true,
+              priceUSD: true,
+              priceMNs: true,
+              comparePriceUSD: true,
+              comparePriceMNs: true,
+              sku: true,
+              stock: true,
+              isActive: true,
+              isFeatured: true,
+              isCombo: true,
+              images: true,
+              allergens: true,
+              nutritionalInfo: true,
+              weight: true,
+              categoryId: true,
+              createdAt: true,
+              updatedAt: true,
+              variants: {
+                where: { isActive: true },
+                orderBy: { order: 'asc' },
+              },
+            },
+          });
+        }
+        throw error;
+      });
 
     if (!product) {
       throw new NotFoundException('Producto no encontrado');
@@ -272,10 +284,49 @@ export class CartService {
     };
 
     if (existingItem) {
-      return this.prisma.cartItem.update({
-        where: { id: existingItem.id },
+      return this.prisma.cartItem
+        .update({
+          where: { id: existingItem.id },
+          data: {
+            quantity: totalQuantity,
+          },
+          include: {
+            product: {
+              select: productSelect,
+            },
+            productVariant: true,
+          },
+        })
+        .catch(async (error) => {
+          if (
+            error.message?.includes('does not exist') ||
+            error.message?.includes('no existe') ||
+            error.message?.includes('column')
+          ) {
+            return this.prisma.cartItem.update({
+              where: { id: existingItem.id },
+              data: {
+                quantity: totalQuantity,
+              },
+              include: {
+                product: {
+                  select: productSelect,
+                },
+                productVariant: true,
+              },
+            });
+          }
+          throw error;
+        });
+    }
+
+    return this.prisma.cartItem
+      .create({
         data: {
-          quantity: totalQuantity,
+          userId,
+          productId: addToCartDto.productId,
+          productVariantId: addToCartDto.productVariantId || null,
+          quantity: addToCartDto.quantity,
         },
         include: {
           product: {
@@ -283,12 +334,19 @@ export class CartService {
           },
           productVariant: true,
         },
-      }).catch(async (error) => {
-        if (error.message?.includes('does not exist') || error.message?.includes('no existe') || error.message?.includes('column')) {
-          return this.prisma.cartItem.update({
-            where: { id: existingItem.id },
+      })
+      .catch(async (error) => {
+        if (
+          error.message?.includes('does not exist') ||
+          error.message?.includes('no existe') ||
+          error.message?.includes('column')
+        ) {
+          return this.prisma.cartItem.create({
             data: {
-              quantity: totalQuantity,
+              userId,
+              productId: addToCartDto.productId,
+              productVariantId: addToCartDto.productVariantId || null,
+              quantity: addToCartDto.quantity,
             },
             include: {
               product: {
@@ -300,40 +358,6 @@ export class CartService {
         }
         throw error;
       });
-    }
-
-    return this.prisma.cartItem.create({
-      data: {
-        userId,
-        productId: addToCartDto.productId,
-        productVariantId: addToCartDto.productVariantId || null,
-        quantity: addToCartDto.quantity,
-      },
-      include: {
-        product: {
-          select: productSelect,
-        },
-        productVariant: true,
-      },
-    }).catch(async (error) => {
-      if (error.message?.includes('does not exist') || error.message?.includes('no existe') || error.message?.includes('column')) {
-        return this.prisma.cartItem.create({
-          data: {
-            userId,
-            productId: addToCartDto.productId,
-            productVariantId: addToCartDto.productVariantId || null,
-            quantity: addToCartDto.quantity,
-          },
-          include: {
-            product: {
-              select: productSelect,
-            },
-            productVariant: true,
-          },
-        });
-      }
-      throw error;
-    });
   }
 
   async updateCartItem(userId: string, itemId: string, updateDto: UpdateCartItemDto) {
@@ -419,30 +443,36 @@ export class CartService {
       },
     };
 
-    return this.prisma.cartItem.update({
-      where: { id: itemId },
-      data: { quantity: updateDto.quantity },
-      include: {
-        product: {
-          select: productSelect,
-        },
-        productVariant: true,
-      },
-    }).catch(async (error) => {
-      if (error.message?.includes('does not exist') || error.message?.includes('no existe') || error.message?.includes('column')) {
-        return this.prisma.cartItem.update({
-          where: { id: itemId },
-          data: { quantity: updateDto.quantity },
-          include: {
-            product: {
-              select: productSelect,
-            },
-            productVariant: true,
+    return this.prisma.cartItem
+      .update({
+        where: { id: itemId },
+        data: { quantity: updateDto.quantity },
+        include: {
+          product: {
+            select: productSelect,
           },
-        });
-      }
-      throw error;
-    });
+          productVariant: true,
+        },
+      })
+      .catch(async (error) => {
+        if (
+          error.message?.includes('does not exist') ||
+          error.message?.includes('no existe') ||
+          error.message?.includes('column')
+        ) {
+          return this.prisma.cartItem.update({
+            where: { id: itemId },
+            data: { quantity: updateDto.quantity },
+            include: {
+              product: {
+                select: productSelect,
+              },
+              productVariant: true,
+            },
+          });
+        }
+        throw error;
+      });
   }
 
   async removeFromCart(userId: string, itemId: string) {
@@ -501,28 +531,34 @@ export class CartService {
       },
     };
 
-    const cartItems = await this.prisma.cartItem.findMany({
-      where: { userId },
-      include: {
-        product: {
-          select: productSelect,
-        },
-        productVariant: true,
-      },
-    }).catch(async (error) => {
-      if (error.message?.includes('does not exist') || error.message?.includes('no existe') || error.message?.includes('column')) {
-        return this.prisma.cartItem.findMany({
-          where: { userId },
-          include: {
-            product: {
-              select: productSelect,
-            },
-            productVariant: true,
+    const cartItems = await this.prisma.cartItem
+      .findMany({
+        where: { userId },
+        include: {
+          product: {
+            select: productSelect,
           },
-        });
-      }
-      throw error;
-    });
+          productVariant: true,
+        },
+      })
+      .catch(async (error) => {
+        if (
+          error.message?.includes('does not exist') ||
+          error.message?.includes('no existe') ||
+          error.message?.includes('column')
+        ) {
+          return this.prisma.cartItem.findMany({
+            where: { userId },
+            include: {
+              product: {
+                select: productSelect,
+              },
+              productVariant: true,
+            },
+          });
+        }
+        throw error;
+      });
 
     const validationResults: Array<{
       itemId: string;

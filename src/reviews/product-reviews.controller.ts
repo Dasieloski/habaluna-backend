@@ -31,7 +31,9 @@ export class ProductReviewsController {
   }
 
   @Post('public')
-  @ApiOperation({ summary: 'Create a public review for a product (pending approval, no auth required)' })
+  @ApiOperation({
+    summary: 'Create a public review for a product (pending approval, no auth required)',
+  })
   async createPublic(@Param('productId') productId: string, @Body() dto: CreatePublicReviewDto) {
     return this.reviewsService.createPublic(productId, dto);
   }

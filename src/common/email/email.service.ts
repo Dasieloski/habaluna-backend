@@ -180,7 +180,10 @@ export class EmailService {
       await transport.sendMail(params);
       return { sent: true };
     } catch (error) {
-      this.logger.error(`Error enviando email a ${params.to}`, error instanceof Error ? error.stack : String(error));
+      this.logger.error(
+        `Error enviando email a ${params.to}`,
+        error instanceof Error ? error.stack : String(error),
+      );
       return { sent: false, error: error instanceof Error ? error.message : String(error) };
     }
   }
@@ -211,13 +214,17 @@ export class EmailService {
             <div style="background-color: white; padding: 20px; border-radius: 4px; margin: 20px 0;">
               ${params.content}
             </div>
-            ${params.buttonText && params.buttonUrl ? `
+            ${
+              params.buttonText && params.buttonUrl
+                ? `
               <div style="text-align: center; margin: 30px 0;">
                 <a href="${params.buttonUrl}" style="background-color: #2c3e50; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
                   ${params.buttonText}
                 </a>
               </div>
-            ` : ''}
+            `
+                : ''
+            }
             <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
             <p style="font-size: 12px; color: #666; text-align: center;">
               © ${new Date().getFullYear()} Habanaluna. Todos los derechos reservados.

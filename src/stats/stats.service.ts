@@ -7,59 +7,66 @@ export class StatsService {
 
   async getDashboardStats() {
     const threshold = 10; // Umbral de stock bajo
-    const [totalUsers, totalProducts, totalOrders, totalRevenue, recentOrders, lowStockProducts, lowStockCount] =
-      await Promise.all([
-        this.prisma.user.count(),
-        this.prisma.product.count({ where: { isActive: true } }),
-        this.prisma.order.count(),
-        this.prisma.order.aggregate({
-          _sum: { total: true },
-          where: { paymentStatus: 'PAID' },
-        }),
-        this.prisma.order.findMany({
-          take: 10,
-          orderBy: { createdAt: 'desc' },
-          include: {
-            user: {
-              select: {
-                email: true,
-                firstName: true,
-                lastName: true,
-              },
+    const [
+      totalUsers,
+      totalProducts,
+      totalOrders,
+      totalRevenue,
+      recentOrders,
+      lowStockProducts,
+      lowStockCount,
+    ] = await Promise.all([
+      this.prisma.user.count(),
+      this.prisma.product.count({ where: { isActive: true } }),
+      this.prisma.order.count(),
+      this.prisma.order.aggregate({
+        _sum: { total: true },
+        where: { paymentStatus: 'PAID' },
+      }),
+      this.prisma.order.findMany({
+        take: 10,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: {
+            select: {
+              email: true,
+              firstName: true,
+              lastName: true,
             },
-            items: {
-              include: {
-                product: {
-                  select: {
-                    name: true,
-                  },
+          },
+          items: {
+            include: {
+              product: {
+                select: {
+                  name: true,
                 },
               },
             },
           },
-        }),
-        this.prisma.product.findMany({
-          where: {
-            stock: { lte: threshold },
-            isActive: true,
-          },
-          take: 10,
-          orderBy: { stock: 'asc' },
-          include: {
-            category: {
-              select: {
-                name: true,
-              },
+        },
+      }),
+      this.prisma.product.findMany({
+        where: {
+          stock: { lte: threshold },
+          isActive: true,
+        },
+        take: 10,
+        orderBy: { stock: 'asc' },
+        include: {
+          category: {
+            select: {
+              name: true,
             },
           },
-        }),
-        this.prisma.product.count({
-          where: {
-            stock: { lte: threshold },
-            isActive: true,
-          },
-        }),
-      ]);
+        },
+      }),
+      this.prisma.product.count({
+        where: {
+          stock: { lte: threshold },
+          isActive: true,
+        },
+      }),
+    ]);
 
     // Sales by month (last 6 months)
     const sixMonthsAgo = new Date();

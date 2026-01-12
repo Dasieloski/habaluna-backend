@@ -12,7 +12,12 @@ export class SearchController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get user search history' })
-  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Number of results (default: 10)' })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Number of results (default: 10)',
+  })
   async getUserHistory(@Request() req: any, @Query('limit') limit?: string) {
     const limitNum = limit ? parseInt(limit, 10) : 10;
     return this.searchService.getUserSearchHistory(req.user.id, limitNum);
@@ -20,7 +25,12 @@ export class SearchController {
 
   @Get('popular')
   @ApiOperation({ summary: 'Get popular searches' })
-  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Number of results (default: 10)' })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Number of results (default: 10)',
+  })
   async getPopularSearches(@Query('limit') limit?: string) {
     const limitNum = limit ? parseInt(limit, 10) : 10;
     return this.searchService.getPopularSearches(limitNum);
@@ -29,7 +39,12 @@ export class SearchController {
   @Get('suggestions')
   @ApiOperation({ summary: 'Get search suggestions based on history' })
   @ApiQuery({ name: 'term', required: true, description: 'Partial search term' })
-  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Number of suggestions (default: 5)' })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Number of suggestions (default: 5)',
+  })
   async getSuggestions(@Query('term') term: string, @Query('limit') limit?: string) {
     try {
       if (!term || term.trim().length < 2) {

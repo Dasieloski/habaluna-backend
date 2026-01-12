@@ -5,7 +5,7 @@ import * as crypto from 'crypto';
 
 /**
  * Guard CSRF para proteger endpoints mutables (POST, PUT, PATCH, DELETE)
- * 
+ *
  * Funciona con cookies SameSite y tokens CSRF
  * El token se genera en GET requests y se valida en requests mutables
  */
@@ -17,9 +17,10 @@ export class CsrfGuard implements CanActivate {
 
   constructor(private configService: ConfigService) {
     // Usar JWT_SECRET como base para CSRF, o generar uno específico
-    this.csrfSecret = this.configService.get<string>('CSRF_SECRET') || 
-                      this.configService.get<string>('JWT_SECRET') || 
-                      'default-csrf-secret-change-in-production';
+    this.csrfSecret =
+      this.configService.get<string>('CSRF_SECRET') ||
+      this.configService.get<string>('JWT_SECRET') ||
+      'default-csrf-secret-change-in-production';
   }
 
   canActivate(context: ExecutionContext): boolean {
@@ -30,14 +31,14 @@ export class CsrfGuard implements CanActivate {
 
     // Verificar si CSRF está habilitado (por defecto deshabilitado para APIs REST)
     const csrfEnabled = this.configService.get<string>('ENABLE_CSRF') === 'true';
-    
+
     if (!csrfEnabled) {
       return true; // CSRF deshabilitado, permitir todas las requests
     }
 
     // Excluir endpoints públicos (health checks, docs, etc.)
     const publicPaths = ['/api/health', '/api/docs', '/api/docs-json'];
-    if (publicPaths.some(publicPath => path.startsWith(publicPath))) {
+    if (publicPaths.some((publicPath) => path.startsWith(publicPath))) {
       return true;
     }
 
@@ -72,7 +73,7 @@ export class CsrfGuard implements CanActivate {
 
   private generateAndSetToken(request: Request, response: Response): void {
     const token = this.generateToken();
-    
+
     // Establecer cookie con SameSite=Strict para protección CSRF
     response.cookie(this.cookieName, token, {
       httpOnly: false, // Debe ser false para que JavaScript pueda leerlo

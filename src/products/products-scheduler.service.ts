@@ -27,7 +27,9 @@ export class ProductsSchedulerService {
       const adminEmail = this.configService.get<string>('ADMIN_EMAIL');
 
       if (!adminEmail) {
-        this.logger.warn('ADMIN_EMAIL no configurado. No se enviarán notificaciones de stock bajo.');
+        this.logger.warn(
+          'ADMIN_EMAIL no configurado. No se enviarán notificaciones de stock bajo.',
+        );
         return;
       }
 
@@ -64,15 +66,20 @@ export class ProductsSchedulerService {
       }
 
       // Preparar lista de productos para el email
-      const productsList = lowStockProducts.map((product) => {
-        const variantsList = product.variants.length > 0
-          ? product.variants.map((v) => `  - ${v.name || 'Variante'}: ${v.stock} unidades`).join('\n')
-          : '';
+      const productsList = lowStockProducts
+        .map((product) => {
+          const variantsList =
+            product.variants.length > 0
+              ? product.variants
+                  .map((v) => `  - ${v.name || 'Variante'}: ${v.stock} unidades`)
+                  .join('\n')
+              : '';
 
-        return `• ${product.name} (${product.category.name})
+          return `• ${product.name} (${product.category.name})
   Stock: ${product.stock} unidades
   ${variantsList ? `Variantes con stock bajo:\n${variantsList}` : ''}`;
-      }).join('\n\n');
+        })
+        .join('\n\n');
 
       // Enviar email de notificación
       await this.emailService.sendLowStockAlert({
@@ -87,9 +94,14 @@ export class ProductsSchedulerService {
         totalProducts: lowStockProducts.length,
       });
 
-      this.logger.log(`Notificación de stock bajo enviada para ${lowStockProducts.length} productos.`);
+      this.logger.log(
+        `Notificación de stock bajo enviada para ${lowStockProducts.length} productos.`,
+      );
     } catch (error) {
-      this.logger.error('Error al verificar stock bajo:', error instanceof Error ? error.stack : String(error));
+      this.logger.error(
+        'Error al verificar stock bajo:',
+        error instanceof Error ? error.stack : String(error),
+      );
     }
   }
 }

@@ -102,7 +102,10 @@ export class OffersService {
    * Validar y aplicar un cupón/offer
    * Retorna el descuento calculado y la información de la oferta
    */
-  async validateOffer(code: string, subtotal: number): Promise<{
+  async validateOffer(
+    code: string,
+    subtotal: number,
+  ): Promise<{
     valid: boolean;
     discount: number;
     offer?: any;

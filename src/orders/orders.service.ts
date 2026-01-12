@@ -44,21 +44,19 @@ export class OrdersService {
     // Validar stock antes de crear la orden
     for (const item of cart.items) {
       const stock = item.productVariant ? item.productVariant.stock : item.product.stock;
-      
+
       if (stock < item.quantity) {
         const itemName = item.productVariant
           ? `${item.product.name} - ${item.productVariant.name}`
           : item.product.name;
         throw new BadRequestException(
-          `Stock insuficiente para ${itemName}. Stock disponible: ${stock}, solicitado: ${item.quantity}`
+          `Stock insuficiente para ${itemName}. Stock disponible: ${stock}, solicitado: ${item.quantity}`,
         );
       }
 
       // Validar que el producto esté activo
       if (!item.product.isActive) {
-        throw new BadRequestException(
-          `El producto ${item.product.name} ya no está disponible`
-        );
+        throw new BadRequestException(`El producto ${item.product.name} ya no está disponible`);
       }
     }
 
@@ -224,7 +222,10 @@ export class OrdersService {
           firstName: updatedOrder.user.firstName || undefined,
         });
       } catch (error) {
-        this.logger.warn('Error enviando email de actualización de pedido', error instanceof Error ? error.stack : String(error));
+        this.logger.warn(
+          'Error enviando email de actualización de pedido',
+          error instanceof Error ? error.stack : String(error),
+        );
         // No fallar la actualización si el email falla
       }
     }
@@ -328,7 +329,10 @@ export class OrdersService {
           firstName: updatedOrder.user.firstName || undefined,
         });
       } catch (error) {
-        this.logger.warn('Error enviando email de confirmación de pedido', error instanceof Error ? error.stack : String(error));
+        this.logger.warn(
+          'Error enviando email de confirmación de pedido',
+          error instanceof Error ? error.stack : String(error),
+        );
         // No fallar la actualización si el email falla
       }
 

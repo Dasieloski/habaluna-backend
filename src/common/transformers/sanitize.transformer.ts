@@ -29,7 +29,10 @@ export function SanitizeEmail() {
   return Transform(({ value }) => {
     if (typeof value === 'string') {
       // Solo permitir caracteres válidos para email
-      return value.toLowerCase().trim().replace(/[^a-z0-9@._-]/gi, '');
+      return value
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9@._-]/gi, '');
     }
     return value;
   });

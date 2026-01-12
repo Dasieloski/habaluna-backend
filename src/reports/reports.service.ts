@@ -75,9 +75,10 @@ export class ReportsService {
 
     // Agregar datos
     orders.forEach((order) => {
-      const customerName = order.user.firstName && order.user.lastName
-        ? `${order.user.firstName} ${order.user.lastName}`
-        : 'N/A';
+      const customerName =
+        order.user.firstName && order.user.lastName
+          ? `${order.user.firstName} ${order.user.lastName}`
+          : 'N/A';
 
       worksheet.addRow({
         orderNumber: order.orderNumber,
@@ -238,12 +239,15 @@ export class ReportsService {
               doc.addPage();
             }
 
-            const customerName = order.user.firstName && order.user.lastName
-              ? `${order.user.firstName} ${order.user.lastName}`
-              : 'N/A';
+            const customerName =
+              order.user.firstName && order.user.lastName
+                ? `${order.user.firstName} ${order.user.lastName}`
+                : 'N/A';
 
             doc.text(`${order.orderNumber} - ${customerName} - $${Number(order.total).toFixed(2)}`);
-            doc.text(`   Fecha: ${order.createdAt.toLocaleDateString('es-ES')} - Estado: ${order.status}`);
+            doc.text(
+              `   Fecha: ${order.createdAt.toLocaleDateString('es-ES')} - Estado: ${order.status}`,
+            );
             doc.moveDown(0.3);
           });
 

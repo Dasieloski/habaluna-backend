@@ -160,7 +160,7 @@ describe('AuthService', () => {
       jwtService.sign.mockReturnValue('access-token');
       prismaService.refreshToken.create.mockResolvedValue({
         id: 'token-1',
-        token: 'refresh-token',
+        tokenHash: 'hash',
         userId: mockUser.id,
         expiresAt: new Date(),
         createdAt: new Date(),
@@ -203,7 +203,7 @@ describe('AuthService', () => {
       jwtService.sign.mockReturnValue('access-token');
       prismaService.refreshToken.create.mockResolvedValue({
         id: 'token-1',
-        token: 'refresh-token',
+        tokenHash: 'hash',
         userId: newUser.id,
         expiresAt: new Date(),
         createdAt: new Date(),
@@ -234,7 +234,7 @@ describe('AuthService', () => {
     it('debería retornar nuevos tokens cuando el refresh token es válido', async () => {
       const tokenRecord = {
         id: 'token-1',
-        token: validToken,
+        tokenHash: 'hash',
         userId: mockUser.id,
         expiresAt: new Date(Date.now() + 86400000), // Mañana
         createdAt: new Date(),
@@ -243,10 +243,11 @@ describe('AuthService', () => {
 
       jwtService.verify.mockReturnValue(mockPayload);
       prismaService.refreshToken.findUnique.mockResolvedValue(tokenRecord as any);
+      prismaService.refreshToken.deleteMany.mockResolvedValue({ count: 1 } as any);
       jwtService.sign.mockReturnValue('new-access-token');
       prismaService.refreshToken.create.mockResolvedValue({
         id: 'token-2',
-        token: 'new-refresh-token',
+        tokenHash: 'hash2',
         userId: mockUser.id,
         expiresAt: new Date(),
         createdAt: new Date(),
@@ -268,7 +269,7 @@ describe('AuthService', () => {
     it('debería lanzar UnauthorizedException si el token está expirado', async () => {
       const expiredToken = {
         id: 'token-1',
-        token: validToken,
+        tokenHash: 'hash',
         userId: mockUser.id,
         expiresAt: new Date(Date.now() - 86400000), // Ayer
         createdAt: new Date(),
@@ -285,7 +286,7 @@ describe('AuthService', () => {
       const inactiveUser = { ...mockUser, isActive: false };
       const tokenRecord = {
         id: 'token-1',
-        token: validToken,
+        tokenHash: 'hash',
         userId: mockUser.id,
         expiresAt: new Date(Date.now() + 86400000),
         createdAt: new Date(),

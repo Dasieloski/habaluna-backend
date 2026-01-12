@@ -51,7 +51,10 @@ export class HealthService {
   /**
    * Verifica solo la conexión a la base de datos (readiness probe)
    */
-  async checkReadiness(): Promise<{ status: 'ready' | 'not ready'; database: { status: string; responseTime?: number } }> {
+  async checkReadiness(): Promise<{
+    status: 'ready' | 'not ready';
+    database: { status: string; responseTime?: number };
+  }> {
     const dbCheck = await this.checkDatabase();
     return {
       status: dbCheck.status === 'connected' ? 'ready' : 'not ready',
@@ -71,7 +74,10 @@ export class HealthService {
   /**
    * Verifica la conexión a la base de datos
    */
-  private async checkDatabase(): Promise<{ status: 'connected' | 'disconnected'; responseTime?: number }> {
+  private async checkDatabase(): Promise<{
+    status: 'connected' | 'disconnected';
+    responseTime?: number;
+  }> {
     try {
       const startTime = Date.now();
       // Ejecutar query simple para verificar conexión

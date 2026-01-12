@@ -7,7 +7,8 @@ import { IsStrongPassword } from '../validators/is-strong-password.validator';
  */
 export class PasswordValidationDto {
   @ApiProperty({
-    description: 'Contraseña con requisitos de seguridad: mínimo 8 caracteres, 1 mayúscula, 1 minúscula, 1 número, 1 símbolo',
+    description:
+      'Contraseña con requisitos de seguridad: mínimo 8 caracteres, 1 mayúscula, 1 minúscula, 1 número, 1 símbolo',
     example: 'Password123!',
     minLength: 8,
   })
@@ -24,7 +25,8 @@ export class PasswordValidationDto {
       requireSymbols: true,
     },
     {
-      message: 'La contraseña debe tener mínimo 8 caracteres e incluir al menos una mayúscula, una minúscula, un número y un símbolo',
+      message:
+        'La contraseña debe tener mínimo 8 caracteres e incluir al menos una mayúscula, una minúscula, un número y un símbolo',
     },
   )
   password: string;

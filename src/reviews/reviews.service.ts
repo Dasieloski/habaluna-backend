@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Decimal } from '@prisma/client/runtime/library';
 import { CreateAdminReviewDto } from './dto/create-admin-review.dto';
@@ -176,7 +181,9 @@ export class ReviewsService {
     });
 
     if (existingReview) {
-      throw new BadRequestException('Ya has dejado un review para este producto. Puedes editarlo o eliminarlo.');
+      throw new BadRequestException(
+        'Ya has dejado un review para este producto. Puedes editarlo o eliminarlo.',
+      );
     }
 
     // Obtener datos del usuario

@@ -6,6 +6,8 @@ import { CartService } from '../cart/cart.service';
 import { createMockPrismaService } from '../common/mocks/prisma.mock';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto, OrderStatus, PaymentStatus } from './dto/update-order-status.dto';
+import { EmailService } from '../common/email/email.service';
+import { OffersService } from '../offers/offers.service';
 
 describe('OrdersService', () => {
   let service: OrdersService;
@@ -19,6 +21,7 @@ describe('OrdersService', () => {
     priceUSD: 10.0,
     priceMNs: null,
     stock: 10,
+    isActive: true,
   };
 
   const mockCartItem = {
@@ -44,9 +47,9 @@ describe('OrdersService', () => {
     status: 'PENDING',
     paymentStatus: 'PENDING',
     subtotal: 20.0,
-    tax: 4.2,
+    tax: 0,
     shipping: 5.99,
-    total: 30.19,
+    total: 25.99,
     shippingAddress: {
       firstName: 'Test',
       lastName: 'User',
@@ -97,6 +100,20 @@ describe('OrdersService', () => {
           useValue: {
             getCart: jest.fn(),
             clearCart: jest.fn(),
+          },
+        },
+        {
+          provide: EmailService,
+          useValue: {
+            sendOrderConfirmationEmail: jest.fn(),
+            sendOrderStatusUpdateEmail: jest.fn(),
+          },
+        },
+        {
+          provide: OffersService,
+          useValue: {
+            validateOffer: jest.fn(),
+            incrementUsageCount: jest.fn(),
           },
         },
       ],
@@ -175,9 +192,9 @@ describe('OrdersService', () => {
         expect.objectContaining({
           data: expect.objectContaining({
             subtotal: 20.0,
-            tax: 4.2, // 20 * 0.21
+            tax: 0, // En este flujo (Cuba) no se aplica IVA
             shipping: 5.99, // Menos de 50 USD
-            total: expect.closeTo(30.19, 2), // 20 + 4.2 + 5.99 (usar closeTo para evitar problemas de precisión)
+            total: expect.closeTo(25.99, 2), // 20 + 0 + 5.99
           }),
         }),
       );

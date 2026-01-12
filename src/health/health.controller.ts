@@ -75,13 +75,13 @@ export class HealthController {
   })
   async checkHealth(@Res() res: Response): Promise<void> {
     const health = await this.healthService.checkHealth();
-    
+
     // Si hay problemas, retornar 503 con los datos del health check
     if (health.status === 'error') {
       res.status(HttpStatus.SERVICE_UNAVAILABLE).json(health);
       return;
     }
-    
+
     res.status(HttpStatus.OK).json(health);
   }
 
@@ -126,13 +126,13 @@ export class HealthController {
   })
   async checkReadiness(@Res() res: Response): Promise<void> {
     const readiness = await this.healthService.checkReadiness();
-    
+
     // Si no está listo, retornar 503 con los datos
     if (readiness.status === 'not ready') {
       res.status(HttpStatus.SERVICE_UNAVAILABLE).json(readiness);
       return;
     }
-    
+
     res.status(HttpStatus.OK).json(readiness);
   }
 

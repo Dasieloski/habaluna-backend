@@ -2,7 +2,12 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class UpdateUserReviewDto {
-  @ApiProperty({ required: false, minimum: 1, maximum: 5, description: 'Rating del producto (1-5 estrellas)' })
+  @ApiProperty({
+    required: false,
+    minimum: 1,
+    maximum: 5,
+    description: 'Rating del producto (1-5 estrellas)',
+  })
   @IsOptional()
   @IsInt()
   @Min(1)

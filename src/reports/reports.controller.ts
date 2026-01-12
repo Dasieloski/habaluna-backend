@@ -28,7 +28,10 @@ export class ReportsController {
 
     const buffer = await this.reportsService.exportOrdersToExcel(start, end);
 
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
     res.setHeader('Content-Disposition', `attachment; filename=ordenes-${Date.now()}.xlsx`);
     res.send(buffer);
   }
@@ -38,7 +41,10 @@ export class ReportsController {
   async exportProductsExcel(@Res() res: Response) {
     const buffer = await this.reportsService.exportProductsToExcel();
 
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
     res.setHeader('Content-Disposition', `attachment; filename=productos-${Date.now()}.xlsx`);
     res.send(buffer);
   }

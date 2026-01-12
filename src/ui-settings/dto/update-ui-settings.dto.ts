@@ -33,7 +33,10 @@ export class UpdateUiSettingsDto {
   @Type(() => BenefitItemDto)
   benefits?: BenefitItemDto[];
 
-  @ApiPropertyOptional({ type: [String], description: 'IDs de categorías a mostrar en el menú principal (ordenadas)' })
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'IDs de categorías a mostrar en el menú principal (ordenadas)',
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })

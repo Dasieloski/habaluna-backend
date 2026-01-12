@@ -21,7 +21,9 @@ export class SearchService {
       });
     } catch (error) {
       // No fallar si no se puede guardar el historial
-      this.logger.warn(`Error guardando búsqueda en historial: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.warn(
+        `Error guardando búsqueda en historial: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 

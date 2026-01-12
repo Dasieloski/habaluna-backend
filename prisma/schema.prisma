@@ -64,6 +64,7 @@ model User {
   reviews       Review[]       @relation("UserReviews")
   wishlistItems WishlistItem[]
   searchHistory SearchHistory[]
+  marketingEmailLogs MarketingEmailLog[]
 
   @@map("users")
 }
@@ -92,7 +93,8 @@ model Offer {
 
 model RefreshToken {
   id        String   @id @default(uuid())
-  token     String   @unique
+  /// Hash del refresh token (SHA-256). Nunca almacenamos el token en texto plano.
+  tokenHash String   @unique
   userId    String
   expiresAt DateTime
   createdAt DateTime @default(now())
@@ -100,6 +102,29 @@ model RefreshToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("refresh_tokens")
+}
+
+enum MarketingEmailType {
+  ABANDONED_CART
+  REVIEW_REQUEST
+}
+
+/// Log simple para evitar enviar automatizaciones repetidas (dedupe).
+model MarketingEmailLog {
+  id        String            @id @default(uuid())
+  userId    String?
+  email     String
+  type      MarketingEmailType
+  /// Clave única para evitar reenvíos (ej: "userId:lastCartUpdatedAt")
+  dedupeKey String
+  sentAt    DateTime          @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([type, dedupeKey])
+  @@index([email])
+  @@index([sentAt])
+  @@map("marketing_email_logs")
 }
 
 model PasswordResetToken {

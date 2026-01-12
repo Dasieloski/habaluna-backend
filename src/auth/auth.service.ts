@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { EmailService } from '../common/email/email.service';
+import type { Request, Response } from 'express';
 
 @Injectable()
 export class AuthService {
@@ -25,10 +26,57 @@ export class AuthService {
     return createHash('sha256').update(token).digest('hex');
   }
 
+  private hashRefreshToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
+  }
+
   private getFrontendBaseUrl(): string {
     // Reusar FRONTEND_URL si existe (ya se usa para CORS); fallback razonable.
     const url = (this.config.get<string>('FRONTEND_URL') || 'http://localhost:3000').trim();
     return url.replace(/\/$/, '');
+  }
+
+  private getRefreshCookieName(): string {
+    return (this.config.get<string>('REFRESH_COOKIE_NAME') || 'refreshToken').trim();
+  }
+
+  /**
+   * Cookie HttpOnly para refresh token (rotación server-side).
+   */
+  setRefreshCookie(res: Response, refreshToken: string) {
+    const name = this.getRefreshCookieName();
+    const isProd = this.config.get<string>('NODE_ENV') === 'production';
+    const cookieDomain = (this.config.get<string>('COOKIE_DOMAIN') || '').trim();
+
+    res.cookie(name, refreshToken, {
+      httpOnly: true,
+      secure: isProd, // HTTPS solo en prod
+      // Importante: si frontend y backend están en dominios distintos (Vercel/Railway),
+      // la cookie debe ser SameSite=None + Secure en producción para que viaje en fetch/XHR.
+      sameSite: (isProd ? 'none' : 'lax') as any,
+      path: '/api', // solo para la API
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
+      ...(cookieDomain ? { domain: cookieDomain } : {}),
+    });
+  }
+
+  clearRefreshCookie(res: Response) {
+    const name = this.getRefreshCookieName();
+    const isProd = this.config.get<string>('NODE_ENV') === 'production';
+    const cookieDomain = (this.config.get<string>('COOKIE_DOMAIN') || '').trim();
+    res.clearCookie(name, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: (isProd ? 'none' : 'lax') as any,
+      path: '/api',
+      ...(cookieDomain ? { domain: cookieDomain } : {}),
+    });
+  }
+
+  getRefreshCookie(req: Request): string | undefined {
+    const name = this.getRefreshCookieName();
+    const v = (req as any)?.cookies?.[name];
+    return typeof v === 'string' && v.trim() ? v.trim() : undefined;
   }
 
   async validateUser(email: string, password: string): Promise<any> {
@@ -92,7 +140,10 @@ export class AuthService {
         firstName: user.firstName || undefined,
       });
     } catch (error) {
-      this.logger.warn('Error enviando email de bienvenida', error instanceof Error ? error.stack : String(error));
+      this.logger.warn(
+        'Error enviando email de bienvenida',
+        error instanceof Error ? error.stack : String(error),
+      );
       // No fallar el registro si el email falla
     }
 
@@ -111,12 +162,16 @@ export class AuthService {
 
   async refreshToken(refreshToken: string) {
     try {
-      const payload = this.jwtService.verify(refreshToken, {
+      const raw = (refreshToken || '').trim();
+      if (!raw) throw new UnauthorizedException('Invalid refresh token');
+
+      const payload = this.jwtService.verify(raw, {
         secret: this.config.get('JWT_REFRESH_SECRET'),
       });
 
+      const tokenHash = this.hashRefreshToken(raw);
       const tokenRecord = await this.prisma.refreshToken.findUnique({
-        where: { token: refreshToken },
+        where: { tokenHash },
         include: { user: true },
       });
 
@@ -128,8 +183,12 @@ export class AuthService {
         throw new UnauthorizedException('Invalid refresh token');
       }
 
-      const tokens = await this.generateTokens(payload.sub, payload.email, payload.role);
+      // ROTACIÓN: invalidar el refresh token actual y emitir uno nuevo
+      await this.prisma.refreshToken.deleteMany({
+        where: { id: tokenRecord.id },
+      });
 
+      const tokens = await this.generateTokens(payload.sub, payload.email, payload.role);
       return tokens;
     } catch (error) {
       throw new UnauthorizedException('Invalid refresh token');
@@ -163,11 +222,13 @@ export class AuthService {
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 7);
 
+      const tokenHash = this.hashRefreshToken(refreshToken);
+
       // Intentar crear el refresh token en la base de datos
       try {
         await this.prisma.refreshToken.create({
           data: {
-            token: refreshToken,
+            tokenHash,
             userId,
             expiresAt,
           },
@@ -224,9 +285,13 @@ export class AuthService {
   }
 
   async logout(refreshToken: string) {
-    await this.prisma.refreshToken.deleteMany({
-      where: { token: refreshToken },
-    });
+    const raw = (refreshToken || '').trim();
+    if (raw) {
+      const tokenHash = this.hashRefreshToken(raw);
+      await this.prisma.refreshToken.deleteMany({
+        where: { tokenHash },
+      });
+    }
     return { message: 'Logged out successfully' };
   }
 
